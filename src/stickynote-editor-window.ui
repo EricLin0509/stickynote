@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+  <template class="StickynoteEditorWindow" parent="AdwApplicationWindow">
+    <property name="title" translatable="yes">StickyNote</property>
+    <property name="default-width">450</property>
+    <property name="default-height">450</property>
+    <property name="content">
+      <object class="AdwToolbarView">
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <child type="start">
+              <object class="GtkMenuButton">
+                <property name="label" translatable="yes">Emojis</property>
+                <property name="tooltip-text" translatable="yes">Emojis</property>
+                <property name="popover">
+                  <object class="GtkEmojiChooser" id="emoji_chooser">
+                    <signal name="emoji-picked" handler="on_emoji_picked_cb" swapped="true"/>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child type="end">
+              <object class="GtkMenuButton" id="editor_menu">
+                <property name="primary">True</property>
+                <property name="icon-name">open-menu-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Main Menu</property>
+                <property name="menu-model">editor_menu_model</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <property name="content">
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="margin_start">8px</property>
+            <property name="margin_end">8px</property>
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="vexpand">true</property>
+                <child>
+                  <object class="GtkTextView" id="text_view">
+                    <property name="wrap-mode">word-char</property>
+                    <property name="buffer">
+                      <object class="GtkTextBuffer" id="text_buffer">
+                        <signal name="changed" handler="on_changed_cb" swapped="true"/>
+                      </object>
+                    </property>
+                    <style>
+                      <class name="textview_adwaita"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">10</property>
+                <property name="height-request">40</property>
+                <property name="margin_bottom">2px</property>
+                <child>
+                  <object class="GtkLabel" id="char_count_label">
+                    <property name="label">Characters 0</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </property>
+  </template>
+  <menu id="editor_menu_model">
+    <section>
+      <item>
+        <attribute name="custom">theme</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Save</attribute>
+        <attribute name="action">win.save</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Quit StickyNote</attribute>
+        <attribute name="action">app.quit</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>
+

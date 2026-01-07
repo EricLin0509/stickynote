@@ -1,0 +1,96 @@
+:root {
+  --yellow-stickynote: #f5e5a0;
+  --blue-stickynote: #b0c4de;
+  --green-stickynote: #c1e1c1;
+  --red-stickynote: #e6a8a8;
+  --purple-stickynote: #d8bfd8;
+  --orange-stickynote: #f5e5cb;
+  --text-color: #000;
+}
+
+/* Dark color scheme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --yellow-stickynote: #8b7d3a;
+    --blue-stickynote: #4a5c7a;
+    --green-stickynote: #5a7a5a;
+    --red-stickynote: #7a5a5a;
+    --purple-stickynote: #6a5a7a;
+    --orange-stickynote: #8b7d6b;
+    --text-color: #fff;
+  }
+}
+
+
+.yellow-stickynote {
+  background-color: var(--yellow-stickynote);
+  color: var(--text-color);
+}
+
+.blue-stickynote {
+  background-color: var(--blue-stickynote);
+  color: var(--text-color);
+}
+
+.green-stickynote {
+  background-color: var(--green-stickynote);
+  color: var(--text-color);
+}
+
+.red-stickynote {
+  background-color: var(--red-stickynote);
+  color: var(--text-color);
+}
+
+.purple-stickynote {
+  background-color: var(--purple-stickynote);
+  color: var(--text-color);
+}
+
+.orange-stickynote {
+  background-color: var(--orange-stickynote);
+  color: var(--text-color);
+}
+
+.textview_adwaita {
+  background-color: var(--background-color);
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-radius: 12px;
+  border: solid 2px var(--border-color);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.checkbutton {
+  padding: 0;
+  min-height: 42px;
+  min-width: 42px;
+  padding: 1px;
+  background-clip: content-box;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px @borders;
+}
+
+.checkbutton radio {
+  -gtk-icon-source: none;
+  border: none;
+  background: none;
+  box-shadow: none;
+  min-width: 12px;
+  min-height: 12px;
+  transform: translate(27px, 14px);
+  padding: 2px;
+}
+
+.checkbutton:checked {
+  box-shadow: inset 0 0 0 2px @theme_selected_bg_color;
+}
+
+.checkbutton radio:checked {
+  -gtk-icon-source: -gtk-icontheme("object-select-symbolic");
+  background-color: @theme_selected_bg_color;
+  color: @theme_selected_fg_color;
+}

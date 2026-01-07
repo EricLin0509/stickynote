@@ -1,0 +1,8 @@
+# List of source files containing translatable strings.
+# Please keep this file sorted alphabetically.
+data/com.ericlin.stickynote.desktop.in
+data/com.ericlin.stickynote.metainfo.xml.in
+data/com.ericlin.stickynote.gschema.xml
+src/main.c
+src/stickynote-window.c
+src/stickynote-window.ui

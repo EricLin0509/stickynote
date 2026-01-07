@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=stickynote
+Exec=stickynote
+Icon=com.ericlin.stickynote
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=GTK;
+StartupNotify=true
+DBusActivatable=true
