@@ -4,6 +4,7 @@ stickynote_sources = [
   'stickynote-window.c',
   'stickynote-editor-window.c',
   'theme-selector.c',
+  'metadata.c',
 ]
 
 stickynote_deps = [

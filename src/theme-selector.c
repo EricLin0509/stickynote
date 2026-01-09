@@ -94,7 +94,6 @@ theme_selector_class_init (ThemeSelectorClass *klass)
 
     gtk_widget_class_set_layout_manager_type(widget_class, GTK_TYPE_BIN_LAYOUT);
 
-    gtk_widget_class_set_css_name (widget_class, "themeselector");
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/theme-selector.ui");
     gtk_widget_class_bind_template_callback (widget_class, on_checkbutton_toggled);
     gtk_widget_class_bind_template_child (widget_class, ThemeSelector, box);
