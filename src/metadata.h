@@ -27,8 +27,41 @@
 
 typedef struct Metadata Metadata;
 
+/* Create a new metadata object from a file path */
+/*
+ * @param path The file path to the metadata file
+ *
+ * @note If `path` is NULL, it will create a new empty metadata object
+*/
 Metadata *
 metadata_new(const gchar *path);
 
+/* Free the memory of a metadata object */
+void
+metadata_clear(Metadata **metadata);
+
+/* Load the content from the metadata file */
+gchar *
+metadata_load(Metadata *metadata);
+
+/* Update the metadata object with the given color scheme and title */
+/*
+ * @param metadata The metadata object to update
+ * @param color_scheme The color scheme to set
+ * @param title The title to set
+ *
+ * @note If `title` is NULL, it will not update the title
+ * @note If `color_scheme` is less than 0, it will not update the color scheme
+*/
+void
+metadata_update(Metadata *metadata, int color_scheme, const gchar *title);
+
+/* Save the content to the metadata file */
+/*
+ * @param metadata The metadata object to save
+ * @param content The content to save to the metadata file
+*/
+void
+metadata_save(Metadata *metadata, const gchar *content);
 
 #endif /* METADATA_H */

@@ -51,9 +51,22 @@ typedef struct ParserContext {
 static void
 skip_whitespace(char **line)
 {
-    while (**line != '\0' && (**line ==' ' || **line == '\t')) line++;
+    while (**line != '\0' && (**line ==' ' || **line == '\t')) (*line)++;
 }
 
+static ssize_t
+get_file_size(int file_fd)
+{
+    struct stat file_stat;
+    if (fstat(file_fd, &file_stat) < 0) // Get actual file size
+    {
+        g_critical("Failed to get file stat");
+        return -1;
+    }
+    return file_stat.st_size;
+}
+
+/* Handle `STATE_START` state */
 static void
 handle_state_start(ParserContext *context, char **line)
 {
@@ -69,6 +82,7 @@ handle_state_start(ParserContext *context, char **line)
     }
 }
 
+/* Handle `STATE_METADATA` state */
 static void
 handle_state_metadata(ParserContext *context, char **line)
 {
@@ -106,35 +120,34 @@ handle_state_metadata(ParserContext *context, char **line)
 }
 
 static void
-parse_metadata(ParserContext *context, const char *path)
+parse_metadata(ParserContext *context)
 {
-    g_return_if_fail(context != NULL && path != NULL);
+    g_return_if_fail(context != NULL && context->metadata->path != NULL);
 
-    int file_fd = open(path, O_RDONLY);
+    int file_fd = open(context->metadata->path, O_RDONLY);
     if (file_fd < 0)
     {
-        g_critical("Failed to open file: %s", path);
+        g_critical("Failed to open file: %s", context->metadata->path);
         return;
     }
 
-    struct stat file_stat;
-    if (fstat(file_fd, &file_stat) < 0) // Get actual file size
+    ssize_t file_size = get_file_size(file_fd);
+    if (file_size == -1)
     {
-        g_critical("Failed to get file stat: %s", path);
         close(file_fd);
         return;
     }
 
-    char *file_content = mmap(NULL, file_stat.st_size, PROT_READ, MAP_PRIVATE, file_fd, 0);
+    char *file_content = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, file_fd, 0);
     if (file_content == MAP_FAILED)
     {
-        g_critical("Failed to mmap file: %s", path);
+        g_critical("Failed to mmap file: %s", context->metadata->path);
         close(file_fd);
         return;
     }
     char *line_start = file_content;
 
-    while (context->state != STATE_END && line_start < file_content + file_stat.st_size)
+    while (context->state != STATE_END && line_start < file_content + file_size)
     {
         switch (context->state)
         {
@@ -151,6 +164,127 @@ parse_metadata(ParserContext *context, const char *path)
     }
     context->metadata->content_offset = line_start - file_content;
 
-    munmap(file_content, file_stat.st_size);
+    munmap(file_content, file_size);
     close(file_fd);
+}
+
+Metadata *
+metadata_new(const gchar *path)
+{
+    Metadata *metadata = g_new0(Metadata, 1);
+    if (path == NULL) return metadata; // Return empty metadata if path is NULL
+
+    /* If path is not NULL, parse metadata */
+    metadata->path = g_strdup(path);
+    ParserContext context = {
+        .metadata = metadata,
+        .state = STATE_START
+    };
+    parse_metadata(&context);
+
+    return metadata;
+}
+
+/* Load the content from the metadata file */
+gchar *
+metadata_load(Metadata *metadata)
+{
+    g_return_val_if_fail(metadata != NULL && metadata->path != NULL, NULL);
+
+    int file_fd = open(metadata->path, O_RDONLY);
+    if (file_fd < 0)
+    {
+        g_critical("Failed to open file: %s", metadata->path);
+        return NULL;
+    }
+
+    ssize_t file_size = get_file_size(file_fd);
+    if (file_size == -1)
+    {
+        close(file_fd);
+        return NULL;
+    }
+
+    char *file_content = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, file_fd, 0);
+    if (file_content == MAP_FAILED)
+    {
+        g_critical("Failed to mmap file: %s", metadata->path);
+        close(file_fd);
+        return NULL;
+    }
+
+    gchar *content = g_strndup(file_content + metadata->content_offset, file_size - metadata->content_offset);
+
+    munmap(file_content, file_size);
+    close(file_fd);
+
+    return content;
+}
+
+void
+metadata_clear(Metadata **metadata)
+{
+    g_return_if_fail(metadata != NULL && *metadata != NULL);
+
+    g_free((void *)((*metadata)->path));
+    g_free((void *)((*metadata)->title));
+    g_free(*metadata);
+    *metadata = NULL;
+}
+
+void
+metadata_update(Metadata *metadata, int color_scheme, const gchar *title)
+{
+    g_return_if_fail(metadata != NULL);
+
+    if (color_scheme > 0) metadata->color_scheme = color_scheme;
+    if (title != NULL)
+    {
+        g_free((void *)((metadata)->title));
+        metadata->title = g_strdup(title);
+    }
+}
+
+void
+metadata_save(Metadata *metadata, const gchar *content)
+{
+    g_return_if_fail(metadata != NULL && metadata->path != NULL);
+
+    int file_fd = open(metadata->path, O_RDWR | O_CREAT, 0644);
+
+    if (file_fd < 0)
+    {
+        g_critical("Failed to open file: %s", metadata->path);
+        return;
+    }
+
+    char *header_content = g_strdup_printf("---\n%s: %s\n%s: %d\n---\n",
+                                             TITLE_METADATA_STRING, metadata->title,
+                                             COLOR_SCHEME_METADATA_STRING, metadata->color_scheme);
+    int header_size = strlen(header_content);
+    int content_size = strlen(content);
+    int total_content_size = header_size + content_size; // No need to write '\0' at the end because file has an EOF marker
+
+    if (ftruncate(file_fd, total_content_size) < 0) // Truncate file to the correct size
+    {
+        g_critical("Failed to truncate file: %s", metadata->path);
+        close(file_fd);
+        return;
+    }
+
+    char *map = mmap(NULL, total_content_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd, 0);
+
+    if (map == MAP_FAILED)
+    {
+        g_critical("Failed to mmap file: %s", metadata->path);
+        close(file_fd);
+        return;
+    }
+
+    memcpy(map, header_content, header_size); // First write the header
+    memcpy(map + header_size, content, content_size); // Then write the content
+
+    msync(map, total_content_size, MS_SYNC); // Write to disk
+    munmap(map, total_content_size); // Unmap the file
+    close(file_fd); // Close the file
 }
