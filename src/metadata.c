@@ -26,16 +26,23 @@
 
 #include "metadata.h"
 
+#define TIMESTAMP_METADATA_STRING "date"
 #define TITLE_METADATA_STRING "title"
 #define COLOR_SCHEME_METADATA_STRING "color_scheme"
+
+#define TIMESTAMP_FORMAT "%Y-%m-%dT%H:%M:%S"
 
 typedef enum {
     STATE_START,
     STATE_METADATA,
+    STATE_METADATA_TIMESTAMP,
+    STATE_METADATA_TITLE,
+    STATE_METADATA_COLOR_SCHEME,
     STATE_END
 } ParserState;
 
 typedef struct Metadata {
+    const char *timestamp;
     const char *path;
     const char *title;
     int color_scheme;
@@ -74,49 +81,91 @@ handle_state_start(ParserContext *context, char **line)
     {
         *line += 4; // Skip "---\n"
         context->state = STATE_METADATA;
+        return;
     }
-    else
-    {
-        g_warning ("Unexpected line: %s", *line);
-        context->state = STATE_END;
-    }
+
+    g_warning ("Unexpected line: %s", *line);
+    context->state = STATE_END;
 }
 
 /* Handle `STATE_METADATA` state */
 static void
 handle_state_metadata(ParserContext *context, char **line)
 {
-    if (strstr(*line, TITLE_METADATA_STRING) != NULL)
+    if (strstr(*line, TIMESTAMP_METADATA_STRING) == *line)
     {
-        *line += strlen(TITLE_METADATA_STRING) + 1;
-        skip_whitespace(line);
-        char *title_end = strchr(*line, '\n');
-        context->metadata->title = g_strndup(*line, title_end - *line);
-        *line = title_end + 1;
+        context->state = STATE_METADATA_TIMESTAMP;
+        return;
     }
-    else if (strstr(*line, COLOR_SCHEME_METADATA_STRING) != NULL)
+    else if (strstr(*line, TITLE_METADATA_STRING) == *line)
     {
-        *line += strlen(COLOR_SCHEME_METADATA_STRING) + 1;
-        skip_whitespace(line);
-        sscanf (*line, "%d", &context->metadata->color_scheme);
-        char *color_scheme_end = strchr(*line, '\n');
-        *line = color_scheme_end + 1;   
+        context->state = STATE_METADATA_TITLE;
+        return;
+    }
+    else if (strstr(*line, COLOR_SCHEME_METADATA_STRING) == *line)
+    {
+        context->state = STATE_METADATA_COLOR_SCHEME;
+        return;
     }
     else if (strstr(*line, "---\n") == *line) // Ensure line is at the end of metadata
     {
         *line += 4; // Skip "---\n"
         context->state = STATE_END;
+        return;
     }
-    else // Try to skip other metadata lines
+
+    char *line_end = strchr(*line, '\n');
+    if (line_end == NULL) // If no newline, set state to end
     {
-        char *line_end = strchr(*line, '\n');
-        if (line_end == NULL) // If no newline, set state to end
-        {
-            *line += strlen(*line);
-            context->state = STATE_END;
-        }
-        else *line = line_end + 1; // Skip the line
+        *line += strlen(*line);
+        context->state = STATE_END;
     }
+    else *line = line_end + 1; // Skip the line
+}
+
+/* Handle `STATE_METADATA_TIMESTAMP` state */
+static void
+handle_state_metadata_timestamp(ParserContext *context, char **line)
+{
+    g_return_if_fail(context != NULL);
+
+    *line += strlen(TIMESTAMP_METADATA_STRING) + 1;
+    skip_whitespace(line);
+    char *timestamp_end = strchr(*line, '\n');
+    context->metadata->timestamp = g_strndup(*line, timestamp_end - *line);
+    *line = timestamp_end + 1;
+
+    context->state = STATE_METADATA;
+}
+
+/* Handle `STATE_METADATA_TITLE` state */
+static void
+handle_state_metadata_title(ParserContext *context, char **line)
+{
+    g_return_if_fail(context != NULL);
+
+    *line += strlen(TITLE_METADATA_STRING) + 1;
+    skip_whitespace(line);
+    char *title_end = strchr(*line, '\n');
+    context->metadata->title = g_strndup(*line, title_end - *line);
+    *line = title_end + 1;
+
+    context->state = STATE_METADATA;
+}
+
+/* Handle `STATE_METADATA_COLOR_SCHEME` state */
+static void
+handle_state_metadata_color_scheme(ParserContext *context, char **line)
+{
+    g_return_if_fail(context != NULL);
+
+    *line += strlen(COLOR_SCHEME_METADATA_STRING) + 1;
+    skip_whitespace(line);
+    sscanf (*line, "%d", &context->metadata->color_scheme);
+    char *color_scheme_end = strchr(*line, '\n');
+    *line = color_scheme_end + 1;
+
+    context->state = STATE_METADATA;
 }
 
 static void
@@ -151,15 +200,24 @@ parse_metadata(ParserContext *context)
     {
         switch (context->state)
         {
-        case STATE_START:
-            handle_state_start(context, &line_start);
-            break;
-        case STATE_METADATA:
-            handle_state_metadata(context, &line_start);
-            break;
-        case STATE_END:
-        default:
-            break;
+            case STATE_START:
+                handle_state_start(context, &line_start);
+                break;
+            case STATE_METADATA:
+                handle_state_metadata(context, &line_start);
+                break;
+            case STATE_METADATA_TIMESTAMP:
+                handle_state_metadata_timestamp(context, &line_start);
+                break;
+            case STATE_METADATA_TITLE:
+                handle_state_metadata_title(context, &line_start);
+                break;
+            case STATE_METADATA_COLOR_SCHEME:
+                handle_state_metadata_color_scheme(context, &line_start);
+                break;
+            case STATE_END:
+            default:
+                break;
         }
     }
     context->metadata->content_offset = line_start - file_content;
@@ -227,6 +285,7 @@ metadata_clear(Metadata **metadata)
     g_return_if_fail(metadata != NULL && *metadata != NULL);
 
     g_free((void *)((*metadata)->path));
+    g_free((void *)((*metadata)->timestamp));
     g_free((void *)((*metadata)->title));
     g_free(*metadata);
     *metadata = NULL;
@@ -240,7 +299,7 @@ metadata_update(Metadata *metadata, int color_scheme, const gchar *title)
     if (color_scheme > 0) metadata->color_scheme = color_scheme;
     if (title != NULL)
     {
-        g_free((void *)((metadata)->title));
+        if (metadata->title != NULL) g_free((void *)(metadata->title));
         metadata->title = g_strdup(title);
     }
 }
@@ -250,6 +309,13 @@ metadata_save(Metadata *metadata, const gchar *content)
 {
     g_return_if_fail(metadata != NULL && metadata->path != NULL);
 
+    /* Get current time */
+    GDateTime *time_now = g_date_time_new_now_local();
+    gchar *timestamp = g_date_time_format(time_now, TIMESTAMP_FORMAT);
+    if (metadata->timestamp != NULL) g_free((void *)(metadata->timestamp)); // Free the old timestamp
+    metadata->timestamp = timestamp; // Update the timestamp
+    g_date_time_unref(time_now);
+
     int file_fd = open(metadata->path, O_RDWR | O_CREAT, 0644);
 
     if (file_fd < 0)
@@ -258,7 +324,8 @@ metadata_save(Metadata *metadata, const gchar *content)
         return;
     }
 
-    char *header_content = g_strdup_printf("---\n%s: %s\n%s: %d\n---\n",
+    char *header_content = g_strdup_printf("---\n%s: %s\n%s: %s\n%s: %d\n---\n",
+                                             TIMESTAMP_METADATA_STRING, metadata->timestamp,
                                              TITLE_METADATA_STRING, metadata->title,
                                              COLOR_SCHEME_METADATA_STRING, metadata->color_scheme);
     int header_size = strlen(header_content);
