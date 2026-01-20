@@ -4,19 +4,19 @@
   --green-stickynote: #c1e1c1;
   --red-stickynote: #e6a8a8;
   --purple-stickynote: #d8bfd8;
-  --orange-stickynote: #f5e5cb;
+  --orange-stickynote: #ffd8a8;
   --text-color: #000;
 }
 
 /* Dark color scheme */
 @media (prefers-color-scheme: dark) {
   :root {
-    --yellow-stickynote: #8b7d3a;
+    --yellow-stickynote: #a5942d;
     --blue-stickynote: #4a5c7a;
     --green-stickynote: #5a7a5a;
     --red-stickynote: #7a5a5a;
     --purple-stickynote: #6a5a7a;
-    --orange-stickynote: #8b7d6b;
+    --orange-stickynote: #c07632;
     --text-color: #fff;
   }
 }
