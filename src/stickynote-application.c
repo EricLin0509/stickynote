@@ -121,6 +121,9 @@ stickynote_application_init (StickynoteApplication *self)
 	                                 G_N_ELEMENTS (app_actions),
 	                                 self);
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
+	                                       "win.save",
+	                                       (const char *[]) { "<control>s", NULL });
+	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
 	                                       "app.quit",
 	                                       (const char *[]) { "<control>q", NULL });
 }

@@ -30,11 +30,16 @@ typedef struct Metadata Metadata;
 /* Create a new metadata object from a file path */
 /*
  * @param path The file path to the metadata file
+ * @param user_data The user data to attach to the metadata object
  *
  * @note If `path` is NULL, it will create a new empty metadata object
 */
 Metadata *
-metadata_new(const gchar *path);
+metadata_new(const gchar *path, void *user_data);
+
+/* Build a file name */
+gchar *
+metadata_build_file_name(Metadata *metadata);
 
 /* Free the memory of a metadata object */
 void
@@ -44,17 +49,36 @@ metadata_clear(Metadata **metadata);
 gchar *
 metadata_load(Metadata *metadata);
 
+/* Get metadata information */
+/*
+ * @param metadata The metadata object to get data from
+ * @param [OUT] color_scheme The color scheme to get
+ * @param [OUT] title The title to get
+ *
+*/
+void
+metadata_get_data(Metadata *metadata, int *color_scheme, gchar const **title);
+
+/* Get the file path */
+const gchar *
+metadata_get_path(Metadata *metadata);
+
+/* Set the file path */
+void
+metadata_set_path(Metadata *metadata, const gchar *path);
+
 /* Update the metadata object with the given color scheme and title */
 /*
  * @param metadata The metadata object to update
  * @param color_scheme The color scheme to set
  * @param title The title to set
+ * @param update_timestamp Whether to update the timestamp or not
  *
  * @note If `title` is NULL, it will not update the title
  * @note If `color_scheme` is less than 0, it will not update the color scheme
 */
 void
-metadata_update(Metadata *metadata, int color_scheme, const gchar *title);
+metadata_update(Metadata *metadata, int color_scheme, const gchar *title, gboolean update_timestamp);
 
 /* Save the content to the metadata file */
 /*
@@ -63,5 +87,13 @@ metadata_update(Metadata *metadata, int color_scheme, const gchar *title);
 */
 void
 metadata_save(Metadata *metadata, const gchar *content);
+
+/* Add user data to the metadata object */
+void
+metadata_add_user_data(Metadata *metadata, void *data);
+
+/* Get user data from the metadata object */
+void *
+metadata_get_user_data(Metadata *metadata);
 
 #endif /* METADATA_H */

@@ -66,7 +66,7 @@ on_checkbutton_toggled (ThemeSelector *selector, GtkToggleButton* self)
 static void
 theme_selector_dispose (GObject *object)
 {
-    ThemeSelector *self = (ThemeSelector *)object;
+    ThemeSelector *self = THEME_SELECTOR (object);
 
     g_clear_pointer (&self->box, gtk_widget_unparent);
 

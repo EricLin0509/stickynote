@@ -22,6 +22,8 @@
 
 #include <adwaita.h>
 
+#include "metadata.h"
+
 G_BEGIN_DECLS
 
 #define STICKYNOTE_TYPE_EDITOR_WINDOW (stickynote_editor_window_get_type())
@@ -30,14 +32,14 @@ G_DECLARE_FINAL_TYPE (StickynoteEditorWindow, stickynote_editor_window, STICKYNO
 
 /*
  * Creates a new instance of the editor window
- *@param title
- *  The title of the window
- *@param color_scheme
- *  The color scheme to use for the window, or NULL to use random colors
+ * @param app
+ *  The application instance
+ * @param data
+ *  The metadata
  * @return
  *  A new instance of the editor window
 */
 StickynoteEditorWindow *
-stickynote_editor_window_new (const char *title, const char *color_scheme);
+stickynote_editor_window_new (GApplication *app, Metadata *data);
 
 G_END_DECLS

@@ -26,11 +26,18 @@
 
 #include "metadata.h"
 
+#define TIMESTAMP_GET_TIME_IMPLEMENTATION
+#include "timestamp.h"
+
+/* Keyswords for metadata */
 #define TIMESTAMP_METADATA_STRING "date"
 #define TITLE_METADATA_STRING "title"
 #define COLOR_SCHEME_METADATA_STRING "color_scheme"
 
-#define TIMESTAMP_FORMAT "%Y-%m-%dT%H:%M:%S"
+/* Parser bismasks */
+#define TIMESTAMP_PARSED_MASK 0x01
+#define TITLE_PARSED_MASK 0x02
+#define COLOR_SCHEME_PARSED_MASK 0x04
 
 typedef enum {
     STATE_START,
@@ -47,12 +54,15 @@ typedef struct Metadata {
     const char *title;
     int color_scheme;
     int content_offset; // The offset of the user content in the file
+
+    void *user_data;
 } Metadata;
 
 typedef struct ParserContext {
     Metadata *metadata;
     
     ParserState state;
+    unsigned short parsed_mask;
 } ParserContext;
 
 static void
@@ -92,17 +102,20 @@ handle_state_start(ParserContext *context, char **line)
 static void
 handle_state_metadata(ParserContext *context, char **line)
 {
-    if (strstr(*line, TIMESTAMP_METADATA_STRING) == *line)
+    if ((context->parsed_mask & TIMESTAMP_PARSED_MASK == 0) && // Only parse timestamp if not parsed yet
+        (strstr(*line, TIMESTAMP_METADATA_STRING) == *line))
     {
         context->state = STATE_METADATA_TIMESTAMP;
         return;
     }
-    else if (strstr(*line, TITLE_METADATA_STRING) == *line)
+    else if ((context->parsed_mask & TITLE_PARSED_MASK == 0) &&
+        (strstr(*line, TITLE_METADATA_STRING) == *line))
     {
         context->state = STATE_METADATA_TITLE;
         return;
     }
-    else if (strstr(*line, COLOR_SCHEME_METADATA_STRING) == *line)
+    else if ((context->parsed_mask & COLOR_SCHEME_PARSED_MASK == 0) &&
+        (strstr(*line, COLOR_SCHEME_METADATA_STRING) == *line))
     {
         context->state = STATE_METADATA_COLOR_SCHEME;
         return;
@@ -119,6 +132,7 @@ handle_state_metadata(ParserContext *context, char **line)
     {
         *line += strlen(*line);
         context->state = STATE_END;
+        return;
     }
     else *line = line_end + 1; // Skip the line
 }
@@ -135,6 +149,7 @@ handle_state_metadata_timestamp(ParserContext *context, char **line)
     context->metadata->timestamp = g_strndup(*line, timestamp_end - *line);
     *line = timestamp_end + 1;
 
+    context->parsed_mask |= TIMESTAMP_PARSED_MASK;
     context->state = STATE_METADATA;
 }
 
@@ -150,6 +165,7 @@ handle_state_metadata_title(ParserContext *context, char **line)
     context->metadata->title = g_strndup(*line, title_end - *line);
     *line = title_end + 1;
 
+    context->parsed_mask |= TITLE_PARSED_MASK;
     context->state = STATE_METADATA;
 }
 
@@ -165,26 +181,30 @@ handle_state_metadata_color_scheme(ParserContext *context, char **line)
     char *color_scheme_end = strchr(*line, '\n');
     *line = color_scheme_end + 1;
 
+    context->parsed_mask |= COLOR_SCHEME_PARSED_MASK;
     context->state = STATE_METADATA;
 }
 
-static void
-parse_metadata(ParserContext *context)
+static gboolean
+parse_metadata(ParserContext *context, const char *path)
 {
-    g_return_if_fail(context != NULL && context->metadata->path != NULL);
+    g_return_val_if_fail(context != NULL && path != NULL, FALSE);
+
+    metadata_set_path(context->metadata, path);
 
     int file_fd = open(context->metadata->path, O_RDONLY);
     if (file_fd < 0)
     {
         g_critical("Failed to open file: %s", context->metadata->path);
-        return;
+        return FALSE;
     }
 
     ssize_t file_size = get_file_size(file_fd);
     if (file_size == -1)
     {
+        g_critical("Failed to get file size");
         close(file_fd);
-        return;
+        return FALSE;
     }
 
     char *file_content = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, file_fd, 0);
@@ -192,8 +212,9 @@ parse_metadata(ParserContext *context)
     {
         g_critical("Failed to mmap file: %s", context->metadata->path);
         close(file_fd);
-        return;
+        return FALSE;
     }
+
     char *line_start = file_content;
 
     while (context->state != STATE_END && line_start < file_content + file_size)
@@ -224,23 +245,49 @@ parse_metadata(ParserContext *context)
 
     munmap(file_content, file_size);
     close(file_fd);
+
+    if (context->state != STATE_END) // If the end of file is not reached, there is an error
+    {
+        g_critical("Unexpected end of file");
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 Metadata *
-metadata_new(const gchar *path)
+metadata_new(const gchar *path, void *user_data)
 {
     Metadata *metadata = g_new0(Metadata, 1);
+    
+    metadata->color_scheme = 0;
+    metadata->color_scheme = -1;
+
+    if (user_data != NULL) metadata->user_data = user_data;
+
     if (path == NULL) return metadata; // Return empty metadata if path is NULL
 
     /* If path is not NULL, parse metadata */
-    metadata->path = g_strdup(path);
     ParserContext context = {
         .metadata = metadata,
         .state = STATE_START
     };
-    parse_metadata(&context);
+
+    if (!parse_metadata(&context, path))
+    {
+        g_critical("Failed to parse metadata");
+        metadata_clear(&metadata);
+    }
 
     return metadata;
+}
+
+gchar *
+metadata_build_file_name(Metadata *metadata)
+{
+    g_return_val_if_fail(metadata != NULL, NULL);
+
+    return g_strdup_printf("%s_%s.md", metadata->timestamp, metadata->title);
 }
 
 /* Load the content from the metadata file */
@@ -284,23 +331,55 @@ metadata_clear(Metadata **metadata)
 {
     g_return_if_fail(metadata != NULL && *metadata != NULL);
 
-    g_free((void *)((*metadata)->path));
-    g_free((void *)((*metadata)->timestamp));
-    g_free((void *)((*metadata)->title));
-    g_free(*metadata);
-    *metadata = NULL;
+    g_clear_pointer((void **)(&(*metadata)->path), g_free);
+    g_clear_pointer((void **)(&(*metadata)->timestamp), g_free);
+    g_clear_pointer((void **)(&(*metadata)->title), g_free);
+    g_clear_pointer((void **)metadata, g_free);
 }
 
 void
-metadata_update(Metadata *metadata, int color_scheme, const gchar *title)
+metadata_get_data(Metadata *metadata, int *color_scheme, gchar const **title)
 {
     g_return_if_fail(metadata != NULL);
 
-    if (color_scheme > 0) metadata->color_scheme = color_scheme;
+    if (color_scheme != NULL) *color_scheme = metadata->color_scheme;
+    if (title != NULL) *title = metadata->title;
+}
+
+const gchar *
+metadata_get_path(Metadata *metadata)
+{
+    g_return_val_if_fail(metadata != NULL, NULL);
+
+    return metadata->path;
+}
+
+void
+metadata_set_path(Metadata *metadata, const gchar *path)
+{
+    g_return_if_fail(metadata != NULL && path != NULL);
+
+    if (metadata->path != NULL) g_free((void *)metadata->path);
+
+    metadata->path = g_strdup(path);
+}
+
+void
+metadata_update(Metadata *metadata, int color_scheme, const gchar *title, gboolean update_timestamp)
+{
+    g_return_if_fail(metadata != NULL);
+
+    if (color_scheme >= 0) metadata->color_scheme = color_scheme;
     if (title != NULL)
     {
         if (metadata->title != NULL) g_free((void *)(metadata->title));
         metadata->title = g_strdup(title);
+    }
+    if (update_timestamp)
+    {
+        char *timestamp = timestamp_get_time();
+        if (metadata->timestamp != NULL) g_free((void *)(metadata->timestamp)); // Free the old timestamp
+        metadata->timestamp = timestamp; // Update the timestamp
     }
 }
 
@@ -308,13 +387,6 @@ void
 metadata_save(Metadata *metadata, const gchar *content)
 {
     g_return_if_fail(metadata != NULL && metadata->path != NULL);
-
-    /* Get current time */
-    GDateTime *time_now = g_date_time_new_now_local();
-    gchar *timestamp = g_date_time_format(time_now, TIMESTAMP_FORMAT);
-    if (metadata->timestamp != NULL) g_free((void *)(metadata->timestamp)); // Free the old timestamp
-    metadata->timestamp = timestamp; // Update the timestamp
-    g_date_time_unref(time_now);
 
     int file_fd = open(metadata->path, O_RDWR | O_CREAT, 0644);
 
@@ -354,4 +426,22 @@ metadata_save(Metadata *metadata, const gchar *content)
     msync(map, total_content_size, MS_SYNC); // Write to disk
     munmap(map, total_content_size); // Unmap the file
     close(file_fd); // Close the file
+}
+
+void
+metadata_add_user_data(Metadata *metadata, void *data)
+{
+    g_return_if_fail(metadata != NULL);
+
+    metadata->user_data = data;
+}
+
+void *
+metadata_get_user_data(Metadata *metadata)
+{
+    g_return_val_if_fail(metadata != NULL, NULL);
+
+    if (metadata->user_data == NULL) g_warning("No user data set for metadata");
+
+    return metadata->user_data;
 }

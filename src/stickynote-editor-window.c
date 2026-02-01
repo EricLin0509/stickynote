@@ -33,6 +33,7 @@ struct _StickynoteEditorWindow
 	AdwApplicationWindow  parent_instance;
 
 	/* Template widgets */
+	GtkWidget *toolbar_view;
 	GtkTextView *text_view;
 	GtkTextBuffer *text_buffer;
 	GtkLabel *char_count_label;
@@ -40,10 +41,19 @@ struct _StickynoteEditorWindow
 
 	GtkMenuButton *editor_menu;
 
+	/* Private */
 	int last_color_scheme_index;
+	Metadata *metadata;
 };
 
 G_DEFINE_FINAL_TYPE (StickynoteEditorWindow, stickynote_editor_window, ADW_TYPE_APPLICATION_WINDOW)
+
+enum {
+    FILE_SAVED,
+    N_SIGNALS
+};
+
+static guint stickynote_editor_window_signals[N_SIGNALS];
 
 /* GObject essential methods */
 
@@ -73,26 +83,87 @@ on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, Stickyn
 	}
 
 	gtk_widget_remove_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[editor_window->last_color_scheme_index]); // Remove the last color scheme class
+	metadata_update(editor_window->metadata, color_scheme_index, NULL, FALSE);
 	editor_window->last_color_scheme_index = color_scheme_index; // Update the last color scheme index
 
 	gtk_widget_add_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[color_scheme_index]); // Then add the selected color scheme class
 }
 
 static void
+file_saved_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
+{
+	StickynoteEditorWindow *self = user_data;
+
+	metadata_update(self->metadata, -1, NULL, TRUE); // Only update the timestamp
+
+	if (metadata_get_path (self->metadata) == NULL)
+	{
+		GSettings *setting = g_settings_new ("com.ericlin.stickynote");
+		g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
+		g_autofree gchar *file_name = metadata_build_file_name (self->metadata);
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		metadata_set_path (self->metadata, path);
+		g_object_unref(setting);
+	}
+
+  	GtkTextIter start;
+  	GtkTextIter end;
+	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
+	gchar *content = gtk_text_buffer_get_text(self->text_buffer, &start, &end, FALSE);
+
+	metadata_save (self->metadata, content);
+
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata);
+}
+
+static const GActionEntry window_actions[] = {
+	{ "save", file_saved_action }
+};
+
+static void
+stickynote_editor_window_dispose (GObject *object)
+{
+	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
+
+	g_clear_pointer (&self->toolbar_view, gtk_widget_unparent);
+
+	if (metadata_get_path (self->metadata) == NULL)
+		metadata_clear (&self->metadata); // Only clear the metadata if the file isn't exist
+
+	G_OBJECT_CLASS (stickynote_editor_window_parent_class)->dispose (object);
+}
+
+static void
 stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 {
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->dispose = stickynote_editor_window_dispose;
+
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-saved",
+            G_TYPE_FROM_CLASS (klass),
+            G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+            0,
+            NULL,
+            NULL,
+            NULL,
+            G_TYPE_NONE,
+            1,
+            G_TYPE_POINTER);
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-editor-window.ui");
 	gtk_widget_class_bind_template_callback (widget_class, on_emoji_picked_cb);
 	gtk_widget_class_bind_template_callback (widget_class, on_changed_cb);
+	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, toolbar_view);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, text_view);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, text_buffer);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, char_count_label);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, emoji_chooser);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, editor_menu);
-
-	g_type_ensure (THEME_TYPE_SELECTOR);
 }
 
 static void
@@ -109,34 +180,38 @@ stickynote_editor_window_init (StickynoteEditorWindow *self)
                               "theme");
 
 	g_signal_connect (theme_selector, "color-scheme-changed", G_CALLBACK (on_color_scheme_changed_cb), self);
+
+    g_action_map_add_action_entries (G_ACTION_MAP (self),
+	                                 window_actions,
+	                                 G_N_ELEMENTS (window_actions),
+	                                 self);
 }
 
-/*
- * Creates a new instance of the editor window
- *@param title
- *  The title of the window
- *@param color_scheme
- *  The color scheme to use for the window, or NULL to use random colors
- * @return
- *  A new instance of the editor window
-*/
 StickynoteEditorWindow *
-stickynote_editor_window_new (const char *title, const char *color_scheme)
+stickynote_editor_window_new (GApplication *app, Metadata *data)
 {
-	GApplication *app = g_application_get_default (); // Because this must be a subwindow, we can get the default application instance
+	g_return_val_if_fail (data != NULL && data != NULL, NULL);
 
 	StickynoteEditorWindow *self = g_object_new (STICKYNOTE_TYPE_EDITOR_WINDOW, "application", app, NULL);
+	self->metadata = data;
+
+	const char *title = NULL;
+	int color_scheme = -1;
+
+	metadata_get_data (data, &color_scheme, &title);
 
 	gtk_window_set_title (GTK_WINDOW (self), title ? title : gettext("Untitled"));
 
-	int random_number = g_random_int_range (0, COLOR_SCHEME_COUNT * 6); // Multiply by 6 to get a better ramdom distribution
-	int index = random_number % COLOR_SCHEME_COUNT;
+	if (color_scheme == -1) // If no color scheme define, use random color
+	{
+		int random_number = g_random_int_range (0, COLOR_SCHEME_COUNT * 6); // Multiply by 6 to get a better ramdom distribution
+		color_scheme = random_number % COLOR_SCHEME_COUNT;
+		metadata_update(data, color_scheme, NULL, FALSE);
+	}
 
-	color_scheme = color_scheme ? color_scheme : stickynote_color_scheme[index]; // Choose a random color scheme if none is specified
+	gtk_widget_add_css_class (GTK_WIDGET (self), stickynote_color_scheme[color_scheme]);
 
-	gtk_widget_add_css_class (GTK_WIDGET (self), color_scheme);
-
-	self->last_color_scheme_index = index;
+	self->last_color_scheme_index = color_scheme;
 
 	return self;
 }

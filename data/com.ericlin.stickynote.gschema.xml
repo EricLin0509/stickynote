@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="stickynote">
 	<schema id="com.ericlin.stickynote" path="/com/ericlin/stickynote/">
+    <key name="notes-dir" type="s">
+      <default>'~/.var/app/com.ericlin.stickynote/data'</default>
+      <summary>Notes Storage Location</summary>
+      <description>Where the notebooks are stored (requires app restart)</description>
+    </key>
 	</schema>
 </schemalist>
+

@@ -7,12 +7,12 @@
     <property name="default-width">400</property>
     <property name="default-height">600</property>
     <property name="content">
-      <object class="AdwToolbarView">
+      <object class="AdwToolbarView" id="toolbar">
         <child type="top">
           <object class="AdwHeaderBar">
             <child type="start">
               <object class="GtkButton" id="new_button">
-                <signal name="clicked" handler="stickynote_window_present_editor_window" swapped="true"/>
+                <signal name="clicked" handler="stickynote_window_create_new_note" swapped="true"/>
                 <property name="child">
                   <object class="AdwButtonContent">
                     <property name="label">New</property>
@@ -35,6 +35,14 @@
         <property name="content">
           <object class="AdwStatusPage">
             <property name="title">StickyNote</property>
+            <property name="child">
+              <object class="GtkListBox" id="list_box">
+                <property name="selection-mode">none</property>
+                <style>
+                  <class name="boxed-list-separate"/>
+                </style>
+              </object>
+            </property>
           </object>
         </property>
       </object>
