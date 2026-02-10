@@ -24,7 +24,7 @@
 #define COLOR_SCHEME_COUNT 6 // This must be updated if you add or remove color schemes
 
 #ifdef COLOR_SCHEME_IMPLEMENTATION
-const char *stickynote_color_scheme[] = {
+static const char *stickynote_color_scheme[] = {
 	"red-stickynote",
 	"orange-stickynote",
 	"yellow-stickynote",

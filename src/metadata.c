@@ -287,6 +287,9 @@ metadata_build_file_name(Metadata *metadata)
 {
     g_return_val_if_fail(metadata != NULL, NULL);
 
+    if (metadata->title == NULL)
+        metadata->title = g_strdup("Untitled"); // Set default title if it is NULL
+
     return g_strdup_printf("%s_%s.md", metadata->timestamp, metadata->title);
 }
 
@@ -338,12 +341,13 @@ metadata_clear(Metadata **metadata)
 }
 
 void
-metadata_get_data(Metadata *metadata, int *color_scheme, gchar const **title)
+metadata_get_data(Metadata *metadata, int *color_scheme, gchar const **title, gchar const **timestamp)
 {
     g_return_if_fail(metadata != NULL);
 
     if (color_scheme != NULL) *color_scheme = metadata->color_scheme;
     if (title != NULL) *title = metadata->title;
+    if (timestamp != NULL) *timestamp = metadata->timestamp;
 }
 
 const gchar *
@@ -383,17 +387,17 @@ metadata_update(Metadata *metadata, int color_scheme, const gchar *title, gboole
     }
 }
 
-void
+gboolean
 metadata_save(Metadata *metadata, const gchar *content)
 {
-    g_return_if_fail(metadata != NULL && metadata->path != NULL);
+    g_return_val_if_fail(metadata != NULL && metadata->path != NULL, FALSE);
 
     int file_fd = open(metadata->path, O_RDWR | O_CREAT, 0644);
 
     if (file_fd < 0)
     {
         g_critical("Failed to open file: %s", metadata->path);
-        return;
+        return FALSE;
     }
 
     char *header_content = g_strdup_printf("---\n%s: %s\n%s: %s\n%s: %d\n---\n",
@@ -408,7 +412,7 @@ metadata_save(Metadata *metadata, const gchar *content)
     {
         g_critical("Failed to truncate file: %s", metadata->path);
         close(file_fd);
-        return;
+        return FALSE;
     }
 
     char *map = mmap(NULL, total_content_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd, 0);
@@ -417,7 +421,7 @@ metadata_save(Metadata *metadata, const gchar *content)
     {
         g_critical("Failed to mmap file: %s", metadata->path);
         close(file_fd);
-        return;
+        return FALSE;
     }
 
     memcpy(map, header_content, header_size); // First write the header
@@ -426,6 +430,8 @@ metadata_save(Metadata *metadata, const gchar *content)
     msync(map, total_content_size, MS_SYNC); // Write to disk
     munmap(map, total_content_size); // Unmap the file
     close(file_fd); // Close the file
+
+    return TRUE;
 }
 
 void

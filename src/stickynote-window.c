@@ -44,11 +44,55 @@ G_DEFINE_FINAL_TYPE (StickynoteWindow, stickynote_window, ADW_TYPE_APPLICATION_W
 
 /* GObject essential methods */
 
+static int
+gtk_listbox_sort_func (GtkListBoxRow *row1, GtkListBoxRow *row2, gpointer user_data)
+{
+	const char *time_str1 = adw_action_row_get_subtitle (ADW_ACTION_ROW (row1));
+	const char *time_str2 = adw_action_row_get_subtitle (ADW_ACTION_ROW (row2));
+
+	return memcmp (time_str1, time_str2, strlen (TIME_STRING_FORMAT)); // Because the TIME_STRING_FORMAT is fixed, we can use memcmp to compare the timestamps.
+}
+
+static void
+on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, StickynoteWindow *self)
+{
+	if (data == NULL) return;
+
+	const char *title = NULL;
+	const char *timestamp = NULL;
+	metadata_get_data (data, NULL, &title, &timestamp);
+
+	int year, month, day, hour, minute, second;
+	timestamp_parse (timestamp, &year, &month, &day, &hour, &minute, &second);
+
+	g_autofree gchar *date_str = g_strdup_printf (TIME_STRING_FORMAT, year, month, day, hour, minute, second); // Convert the timestamp to a string
+
+	GtkWidget *row = metadata_get_user_data (data);
+
+	if (row == NULL)
+	{
+		row = adw_action_row_new ();
+		adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
+		adw_action_row_set_subtitle (ADW_ACTION_ROW (row), date_str);
+		g_hash_table_insert (self->metadata_table, row, data);
+		metadata_add_user_data (data, row);
+		gtk_list_box_prepend (self->list_box, row);
+	}
+	else
+	{
+		adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
+		adw_action_row_set_subtitle (ADW_ACTION_ROW (row), date_str);
+	}
+
+	gtk_list_box_invalidate_sort (self->list_box); // Sort the list again to reflect the new row.
+}
+
 static void
 stickynote_window_create_new_note (StickynoteWindow *self)
 {
 	Metadata *data = metadata_new(NULL, NULL);
 	StickynoteEditorWindow *editor_window = stickynote_editor_window_new (self->app, data);
+	g_signal_connect (editor_window, "file-saved", G_CALLBACK (on_stickynote_saved), self);
 	gtk_window_present (GTK_WINDOW (editor_window));
 }
 
@@ -93,6 +137,8 @@ static void
 stickynote_window_init (StickynoteWindow *self)
 {
 	gtk_widget_init_template (GTK_WIDGET (self));
+
+	gtk_list_box_set_sort_func (self->list_box, gtk_listbox_sort_func, NULL, NULL);
 
 	self->app = g_application_get_default ();
 

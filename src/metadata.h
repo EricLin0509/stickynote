@@ -54,10 +54,11 @@ metadata_load(Metadata *metadata);
  * @param metadata The metadata object to get data from
  * @param [OUT] color_scheme The color scheme to get
  * @param [OUT] title The title to get
+ * @param [OUT] timestamp The timestamp to get
  *
 */
 void
-metadata_get_data(Metadata *metadata, int *color_scheme, gchar const **title);
+metadata_get_data(Metadata *metadata, int *color_scheme, gchar const **title, gchar const **timestamp);
 
 /* Get the file path */
 const gchar *
@@ -84,8 +85,10 @@ metadata_update(Metadata *metadata, int color_scheme, const gchar *title, gboole
 /*
  * @param metadata The metadata object to save
  * @param content The content to save to the metadata file
+ * 
+ * @return TRUE if the save is successful, FALSE otherwise
 */
-void
+gboolean
 metadata_save(Metadata *metadata, const gchar *content);
 
 /* Add user data to the metadata object */

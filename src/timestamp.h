@@ -24,6 +24,7 @@
 #include <glib.h>
 
 #define TIMESTAMP_FORMAT "%Y-%m-%dT%H:%M:%S"
+#define TIME_STRING_FORMAT "%04d.%02d.%02d %02d:%02d:%02d" // The generics format for time string
 
 #ifdef TIMESTAMP_GET_TIME_IMPLEMENTATION
 

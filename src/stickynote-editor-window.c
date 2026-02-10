@@ -76,7 +76,7 @@ on_changed_cb (StickynoteEditorWindow *self, GtkTextBuffer *buffer)
 static void
 on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, StickynoteEditorWindow *editor_window)
 {
-	if (color_scheme_index > COLOR_SCHEME_COUNT && color_scheme_index < 0)
+	if (color_scheme_index > COLOR_SCHEME_COUNT || color_scheme_index < 0)
 	{
 		g_critical ("Invalid color scheme index: %d", color_scheme_index);
 		return;
@@ -87,6 +87,35 @@ on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, Stickyn
 	editor_window->last_color_scheme_index = color_scheme_index; // Update the last color scheme index
 
 	gtk_widget_add_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[color_scheme_index]); // Then add the selected color scheme class
+}
+
+static char *
+get_note_dir_realpath (void)
+{
+	GSettings *setting = g_settings_new ("com.ericlin.stickynote");
+	g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
+	g_autofree gchar *realpath = NULL;
+
+	if (strstr (notes_dir, "../") != NULL) // Check if the path is not a treverse path
+	{
+		g_critical ("Treverse path is not allowed: %s", notes_dir);
+		return NULL;
+	}
+
+	if (memcmp (notes_dir, "~/", 2) == 0)
+	{
+		realpath = g_build_filename (g_get_home_dir (), notes_dir + 2, NULL);
+	}
+	else if (memcmp (notes_dir, "/", 1) == 0)
+	{
+		realpath = g_build_filename (notes_dir, NULL);
+	}
+	else
+	{
+		realpath = g_build_filename (g_get_current_dir (), notes_dir, NULL);
+	}
+
+	return g_steal_pointer (&realpath);
 }
 
 static void
@@ -101,11 +130,11 @@ file_saved_action (GSimpleAction *action,
 	if (metadata_get_path (self->metadata) == NULL)
 	{
 		GSettings *setting = g_settings_new ("com.ericlin.stickynote");
-		g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
+		g_autofree gchar *notes_dir = get_note_dir_realpath ();
 		g_autofree gchar *file_name = metadata_build_file_name (self->metadata);
 		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
 		metadata_set_path (self->metadata, path);
-		g_object_unref(setting);
+		g_object_unref (setting);
 	}
 
   	GtkTextIter start;
@@ -113,7 +142,11 @@ file_saved_action (GSimpleAction *action,
 	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
 	gchar *content = gtk_text_buffer_get_text(self->text_buffer, &start, &end, FALSE);
 
-	metadata_save (self->metadata, content);
+	if (!metadata_save (self->metadata, content))
+	{
+		g_critical ("Failed to save file");
+		return;
+	}
 
 	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata);
 }
@@ -198,7 +231,7 @@ stickynote_editor_window_new (GApplication *app, Metadata *data)
 	const char *title = NULL;
 	int color_scheme = -1;
 
-	metadata_get_data (data, &color_scheme, &title);
+	metadata_get_data (data, &color_scheme, &title, NULL);
 
 	gtk_window_set_title (GTK_WINDOW (self), title ? title : gettext("Untitled"));
 
