@@ -89,35 +89,6 @@ on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, Stickyn
 	gtk_widget_add_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[color_scheme_index]); // Then add the selected color scheme class
 }
 
-static char *
-get_note_dir_realpath (void)
-{
-	GSettings *setting = g_settings_new ("com.ericlin.stickynote");
-	g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
-	g_autofree gchar *realpath = NULL;
-
-	if (strstr (notes_dir, "../") != NULL) // Check if the path is not a treverse path
-	{
-		g_critical ("Treverse path is not allowed: %s", notes_dir);
-		return NULL;
-	}
-
-	if (memcmp (notes_dir, "~/", 2) == 0)
-	{
-		realpath = g_build_filename (g_get_home_dir (), notes_dir + 2, NULL);
-	}
-	else if (memcmp (notes_dir, "/", 1) == 0)
-	{
-		realpath = g_build_filename (notes_dir, NULL);
-	}
-	else
-	{
-		realpath = g_build_filename (g_get_current_dir (), notes_dir, NULL);
-	}
-
-	return g_steal_pointer (&realpath);
-}
-
 static void
 file_saved_action (GSimpleAction *action,
                                 GVariant      *parameter,
@@ -125,30 +96,12 @@ file_saved_action (GSimpleAction *action,
 {
 	StickynoteEditorWindow *self = user_data;
 
-	metadata_update(self->metadata, -1, NULL, TRUE); // Only update the timestamp
-
-	if (metadata_get_path (self->metadata) == NULL)
-	{
-		GSettings *setting = g_settings_new ("com.ericlin.stickynote");
-		g_autofree gchar *notes_dir = get_note_dir_realpath ();
-		g_autofree gchar *file_name = metadata_build_file_name (self->metadata);
-		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
-		metadata_set_path (self->metadata, path);
-		g_object_unref (setting);
-	}
-
   	GtkTextIter start;
   	GtkTextIter end;
 	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
 	gchar *content = gtk_text_buffer_get_text(self->text_buffer, &start, &end, FALSE);
 
-	if (!metadata_save (self->metadata, content))
-	{
-		g_critical ("Failed to save file");
-		return;
-	}
-
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata);
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata, content);
 }
 
 static const GActionEntry window_actions[] = {
@@ -177,7 +130,7 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-saved",
+	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-save",
             G_TYPE_FROM_CLASS (klass),
             G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
             0,
@@ -185,8 +138,9 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             NULL,
             NULL,
             G_TYPE_NONE,
-            1,
-            G_TYPE_POINTER);
+            2,
+            G_TYPE_POINTER, // The metadata pointer
+			G_TYPE_POINTER); // The content pointer
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-editor-window.ui");
 	gtk_widget_class_bind_template_callback (widget_class, on_emoji_picked_cb);
@@ -240,6 +194,11 @@ stickynote_editor_window_new (GApplication *app, Metadata *data)
 		int random_number = g_random_int_range (0, COLOR_SCHEME_COUNT * 6); // Multiply by 6 to get a better ramdom distribution
 		color_scheme = random_number % COLOR_SCHEME_COUNT;
 		metadata_update(data, color_scheme, NULL, FALSE);
+	}
+
+	if (metadata_get_content_offset (data) > 0)
+	{
+		metadata_load_direct (data, self->text_buffer);
 	}
 
 	gtk_widget_add_css_class (GTK_WIDGET (self), stickynote_color_scheme[color_scheme]);

@@ -33,7 +33,7 @@
           </object>
         </child>
         <property name="content">
-          <object class="AdwStatusPage">
+          <object class="AdwStatusPage" id="status_page">
             <property name="title">StickyNote</property>
             <property name="child">
               <object class="GtkListBox" id="list_box">

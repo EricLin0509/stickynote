@@ -18,6 +18,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include <glib/gi18n.h>
+
 #include "config.h"
 
 #include "stickynote-window.h"
@@ -33,6 +35,7 @@ struct _StickynoteWindow
 	/* Template widgets */
 	GtkWidget *toolbar;
 	GtkButton *new_button;
+	AdwStatusPage *status_page;
 	GtkListBox *list_box;
 
 	/* Private */
@@ -44,19 +47,70 @@ G_DEFINE_FINAL_TYPE (StickynoteWindow, stickynote_window, ADW_TYPE_APPLICATION_W
 
 /* GObject essential methods */
 
+static char *
+get_note_dir_realpath (void)
+{
+	GSettings *setting = g_settings_new ("com.ericlin.stickynote");
+	g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
+	g_autofree gchar *realpath = NULL;
+
+	if (strstr (notes_dir, "../") != NULL) // Check if the path is not a treverse path
+	{
+		g_critical ("Treverse path is not allowed: %s", notes_dir);
+		return NULL;
+	}
+
+	if (memcmp (notes_dir, "~/", 2) == 0)
+	{
+		realpath = g_build_filename (g_get_home_dir (), notes_dir + 2, NULL);
+	}
+	else if (memcmp (notes_dir, "/", 1) == 0)
+	{
+		realpath = g_build_filename (notes_dir, NULL);
+	}
+	else
+	{
+		realpath = g_build_filename (g_get_current_dir (), notes_dir, NULL);
+	}
+
+	return g_steal_pointer (&realpath);
+}
+
+static gboolean
+save_metadata_to_file (Metadata *data, const gchar *content)
+{
+	metadata_update (data, -1, NULL, TRUE); // Only update the timestamp
+
+	if (metadata_get_path (data) == NULL)
+	{
+		g_autofree gchar *notes_dir = get_note_dir_realpath ();
+		g_autofree gchar *file_name = metadata_build_file_name (data);
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		metadata_set_path (data, path);
+	}
+
+	if (!metadata_save (data, content))
+	{
+		g_critical ("Failed to save file");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static int
 gtk_listbox_sort_func (GtkListBoxRow *row1, GtkListBoxRow *row2, gpointer user_data)
 {
 	const char *time_str1 = adw_action_row_get_subtitle (ADW_ACTION_ROW (row1));
 	const char *time_str2 = adw_action_row_get_subtitle (ADW_ACTION_ROW (row2));
 
-	return memcmp (time_str1, time_str2, strlen (TIME_STRING_FORMAT)); // Because the TIME_STRING_FORMAT is fixed, we can use memcmp to compare the timestamps.
+	return memcmp (time_str2, time_str1, TIME_STRING_LENGTH); // Because the TIME_STRING_FORMAT is fixed, we can use memcmp to compare the timestamps.
 }
 
 static void
-on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, StickynoteWindow *self)
+gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 {
-	if (data == NULL) return;
+	g_return_if_fail (STICKYNOTE_IS_WINDOW (self) && data != NULL);
 
 	const char *title = NULL;
 	const char *timestamp = NULL;
@@ -83,6 +137,16 @@ on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, Stic
 		adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
 		adw_action_row_set_subtitle (ADW_ACTION_ROW (row), date_str);
 	}
+}
+
+static void
+on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, gchar *content, StickynoteWindow *self)
+{
+	if (data == NULL) return;
+
+	if (!save_metadata_to_file (data, content)) return;
+
+	gtk_list_box_update_rows (self, data);
 
 	gtk_list_box_invalidate_sort (self->list_box); // Sort the list again to reflect the new row.
 }
@@ -90,9 +154,9 @@ on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, Stic
 static void
 stickynote_window_create_new_note (StickynoteWindow *self)
 {
-	Metadata *data = metadata_new(NULL, NULL);
+	Metadata *data = metadata_new(NULL);
 	StickynoteEditorWindow *editor_window = stickynote_editor_window_new (self->app, data);
-	g_signal_connect (editor_window, "file-saved", G_CALLBACK (on_stickynote_saved), self);
+	g_signal_connect (editor_window, "file-save", G_CALLBACK (on_stickynote_saved), self);
 	gtk_window_present (GTK_WINDOW (editor_window));
 }
 
@@ -120,6 +184,7 @@ stickynote_window_class_init (StickynoteWindowClass *klass)
 	gtk_widget_class_bind_template_callback (widget_class, stickynote_window_create_new_note);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, toolbar);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, new_button);
+	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, status_page);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, list_box);
 }
 
@@ -131,6 +196,39 @@ clear_hash_table_element (gpointer data)
 	if (metadata == NULL) return;
 
 	metadata_clear (&metadata);
+}
+
+static void
+stickynote_window_init_notes (StickynoteWindow *self)
+{
+	g_autofree gchar *notes_dir = get_note_dir_realpath ();
+	if (notes_dir == NULL) return;
+
+	GDir *dir = g_dir_open (notes_dir, 0, NULL);
+	if (dir == NULL) return;
+
+	size_t note_num = 0;
+	const gchar *file_name;
+	while ((file_name = g_dir_read_name (dir)) != NULL)
+	{
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		Metadata *data = metadata_new (path);
+
+		if (data == NULL) continue;
+		note_num++;
+
+		gtk_list_box_update_rows (self, data);
+	}
+
+	if (note_num == 0)
+	{
+		adw_status_page_set_title (self->status_page, gettext ("No notes found"));
+		adw_status_page_set_description (self->status_page, gettext ("Create a new note by clicking the 'New' button"));
+	}
+	else
+	{
+		gtk_list_box_invalidate_sort (self->list_box);
+	}
 }
 
 static void
@@ -148,4 +246,6 @@ stickynote_window_init (StickynoteWindow *self)
 											NULL,
 											(GDestroyNotify) clear_hash_table_element
 											);
+
+	stickynote_window_init_notes (self);
 }

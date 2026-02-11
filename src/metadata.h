@@ -24,18 +24,18 @@
 #define METADATA_H
 
 #include <glib.h>
+#include <gtk/gtk.h>
 
 typedef struct Metadata Metadata;
 
 /* Create a new metadata object from a file path */
 /*
  * @param path The file path to the metadata file
- * @param user_data The user data to attach to the metadata object
  *
  * @note If `path` is NULL, it will create a new empty metadata object
 */
 Metadata *
-metadata_new(const gchar *path, void *user_data);
+metadata_new(const gchar *path);
 
 /* Build a file name */
 gchar *
@@ -45,9 +45,17 @@ metadata_build_file_name(Metadata *metadata);
 void
 metadata_clear(Metadata **metadata);
 
+/* Get the content offset of the metadata file */
+int
+metadata_get_content_offset(Metadata *metadata);
+
 /* Load the content from the metadata file */
 gchar *
 metadata_load(Metadata *metadata);
+
+/* Load the content directly to the GtkTextBuffer */
+void
+metadata_load_direct(Metadata *metadata, GtkTextBuffer *buffer);
 
 /* Get metadata information */
 /*

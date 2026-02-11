@@ -102,19 +102,19 @@ handle_state_start(ParserContext *context, char **line)
 static void
 handle_state_metadata(ParserContext *context, char **line)
 {
-    if ((context->parsed_mask & TIMESTAMP_PARSED_MASK == 0) && // Only parse timestamp if not parsed yet
+    if ((context->parsed_mask & TIMESTAMP_PARSED_MASK) == 0 && // Only parse timestamp if not parsed yet
         (strstr(*line, TIMESTAMP_METADATA_STRING) == *line))
     {
         context->state = STATE_METADATA_TIMESTAMP;
         return;
     }
-    else if ((context->parsed_mask & TITLE_PARSED_MASK == 0) &&
+    else if ((context->parsed_mask & TITLE_PARSED_MASK) == 0 &&
         (strstr(*line, TITLE_METADATA_STRING) == *line))
     {
         context->state = STATE_METADATA_TITLE;
         return;
     }
-    else if ((context->parsed_mask & COLOR_SCHEME_PARSED_MASK == 0) &&
+    else if ((context->parsed_mask & COLOR_SCHEME_PARSED_MASK) == 0 &&
         (strstr(*line, COLOR_SCHEME_METADATA_STRING) == *line))
     {
         context->state = STATE_METADATA_COLOR_SCHEME;
@@ -131,7 +131,6 @@ handle_state_metadata(ParserContext *context, char **line)
     if (line_end == NULL) // If no newline, set state to end
     {
         *line += strlen(*line);
-        context->state = STATE_END;
         return;
     }
     else *line = line_end + 1; // Skip the line
@@ -256,20 +255,18 @@ parse_metadata(ParserContext *context, const char *path)
 }
 
 Metadata *
-metadata_new(const gchar *path, void *user_data)
+metadata_new(const gchar *path)
 {
     Metadata *metadata = g_new0(Metadata, 1);
-    
-    metadata->color_scheme = 0;
-    metadata->color_scheme = -1;
 
-    if (user_data != NULL) metadata->user_data = user_data;
+    metadata->color_scheme = -1;
 
     if (path == NULL) return metadata; // Return empty metadata if path is NULL
 
     /* If path is not NULL, parse metadata */
     ParserContext context = {
         .metadata = metadata,
+        .parsed_mask = 0,
         .state = STATE_START
     };
 
@@ -291,6 +288,13 @@ metadata_build_file_name(Metadata *metadata)
         metadata->title = g_strdup("Untitled"); // Set default title if it is NULL
 
     return g_strdup_printf("%s_%s.md", metadata->timestamp, metadata->title);
+}
+
+/* Get the content offset of the metadata file */
+int
+metadata_get_content_offset(Metadata *metadata)
+{
+    return metadata->content_offset;
 }
 
 /* Load the content from the metadata file */
@@ -327,6 +331,40 @@ metadata_load(Metadata *metadata)
     close(file_fd);
 
     return content;
+}
+
+/* Load the content directly to the GtkTextBuffer */
+void
+metadata_load_direct(Metadata *metadata, GtkTextBuffer *buffer)
+{
+    g_return_if_fail(metadata != NULL && metadata->path != NULL && buffer != NULL);
+
+    int file_fd = open(metadata->path, O_RDONLY);
+    if (file_fd < 0)
+    {
+        g_critical("Failed to open file: %s", metadata->path);
+        return;
+    }
+
+    ssize_t file_size = get_file_size(file_fd);
+    if (file_size == -1)
+    {
+        close(file_fd);
+        return;
+    }
+
+    char *file_content = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, file_fd, 0);
+    if (file_content == MAP_FAILED)
+    {
+        g_critical("Failed to mmap file: %s", metadata->path);
+        close(file_fd);
+        return;
+    }
+
+    gtk_text_buffer_set_text(buffer, file_content + metadata->content_offset, file_size - metadata->content_offset);
+
+    munmap(file_content, file_size);
+    close(file_fd);
 }
 
 void
@@ -446,8 +484,6 @@ void *
 metadata_get_user_data(Metadata *metadata)
 {
     g_return_val_if_fail(metadata != NULL, NULL);
-
-    if (metadata->user_data == NULL) g_warning("No user data set for metadata");
 
     return metadata->user_data;
 }

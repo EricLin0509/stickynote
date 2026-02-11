@@ -25,6 +25,7 @@
 
 #define TIMESTAMP_FORMAT "%Y-%m-%dT%H:%M:%S"
 #define TIME_STRING_FORMAT "%04d.%02d.%02d %02d:%02d:%02d" // The generics format for time string
+#define TIME_STRING_LENGTH 19 // The length of the time string, including the null terminator
 
 #ifdef TIMESTAMP_GET_TIME_IMPLEMENTATION
 
@@ -47,6 +48,8 @@ timestamp_get_time(void)
 static inline void
 timestamp_parse(const char *timestamp, int *year, int *month, int *day, int *hour, int *minute, int *second)
 {
+    if (timestamp == NULL) return;
+
     if (sscanf(timestamp, "%4d-%2d-%2dT%2d:%2d:%2d", year, month, day, hour, minute, second) != 6)
     {
         g_critical("Invalid timestamp format: %s", timestamp);
