@@ -1,6 +1,7 @@
 stickynote_sources = [
   'main.c',
   'stickynote-application.c',
+  'stickynote-row.c',
   'stickynote-window.c',
   'stickynote-editor-window.c',
   'theme-selector.c',

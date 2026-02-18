@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+  <template class="StickynoteRow" parent="GtkListBoxRow">
+    <child>
+      <object class="AdwActionRow" id="action_row">
+        <property name="activatable-widget">edit_button</property>
+        <property name="use-underline">true</property>
+        <child type="suffix">
+          <object class="AdwSplitButton" id="edit_button">
+            <property name="valign">center</property>
+            <property name="icon-name">document-edit-symbolic</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

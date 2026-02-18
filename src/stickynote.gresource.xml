@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/com/ericlin/stickynote">
+    <file preprocess="xml-stripblanks">stickynote-row.ui</file>
     <file preprocess="xml-stripblanks">stickynote-window.ui</file>
     <file preprocess="xml-stripblanks">stickynote-editor-window.ui</file>
     <file preprocess="xml-stripblanks">theme-selector.ui</file>

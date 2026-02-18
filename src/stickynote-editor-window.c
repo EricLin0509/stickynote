@@ -83,7 +83,6 @@ on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, Stickyn
 	}
 
 	gtk_widget_remove_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[editor_window->last_color_scheme_index]); // Remove the last color scheme class
-	metadata_update(editor_window->metadata, color_scheme_index, NULL, FALSE);
 	editor_window->last_color_scheme_index = color_scheme_index; // Update the last color scheme index
 
 	gtk_widget_add_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[color_scheme_index]); // Then add the selected color scheme class
@@ -100,6 +99,8 @@ file_saved_action (GSimpleAction *action,
   	GtkTextIter end;
 	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
 	gchar *content = gtk_text_buffer_get_text(self->text_buffer, &start, &end, FALSE);
+
+	metadata_update (self->metadata, self->last_color_scheme_index, NULL, FALSE);
 
 	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata, content);
 }
@@ -204,6 +205,16 @@ stickynote_editor_window_new (GApplication *app, Metadata *data)
 	gtk_widget_add_css_class (GTK_WIDGET (self), stickynote_color_scheme[color_scheme]);
 
 	self->last_color_scheme_index = color_scheme;
+
+	return self;
+}
+
+StickynoteEditorWindow *
+stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback file_save_signal_handler, gpointer user_data)
+{
+	StickynoteEditorWindow *self = stickynote_editor_window_new (app, data);
+
+	g_signal_connect (self, "file-save", file_save_signal_handler, user_data);
 
 	return self;
 }

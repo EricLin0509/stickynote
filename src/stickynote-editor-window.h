@@ -42,4 +42,21 @@ G_DECLARE_FINAL_TYPE (StickynoteEditorWindow, stickynote_editor_window, STICKYNO
 StickynoteEditorWindow *
 stickynote_editor_window_new (GApplication *app, Metadata *data);
 
+
+/*
+ * Creates a new instance of the editor window with a file save signal handler
+ * @param app
+ *  The application instance
+ * @param data
+ *  The metadata
+ * @param file_save_signal_handler
+ *  The signal handler for the file save signal
+ * @param user_data
+ *  The user data for the signal handler
+ * @return
+ *  A new instance of the editor window
+*/
+StickynoteEditorWindow *
+stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback file_save_signal_handler, gpointer user_data);
+
 G_END_DECLS

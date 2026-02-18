@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include "stickynote-row.h"
 #include "stickynote-window.h"
 #include "stickynote-editor-window.h"
 
@@ -62,7 +63,7 @@ stickynote_window_show_note_status (StickynoteWindow *self)
 	else
 	{
 		adw_status_page_set_title (self->status_page, gettext ("StickyNote"));
-		gchar *should_include_plural = (self->note_num > 1) ? "s" : "";
+		const gchar *should_include_plural = (self->note_num > 1) ? "s" : "";
 		g_autofree gchar *description = g_strdup_printf (gettext ("%zu note%s in total"), self->note_num, should_include_plural);
 		adw_status_page_set_description (self->status_page, description);
 	}
@@ -151,11 +152,16 @@ save_metadata_to_file (Metadata *data, const gchar *content)
 static int
 gtk_listbox_sort_func (GtkListBoxRow *row1, GtkListBoxRow *row2, gpointer user_data)
 {
-	const char *time_str1 = adw_action_row_get_subtitle (ADW_ACTION_ROW (row1));
-	const char *time_str2 = adw_action_row_get_subtitle (ADW_ACTION_ROW (row2));
+	const char *time_str1 = stickynote_row_get_subtitle (STICKYNOTE_ROW (row1));
+	if (time_str1 == NULL) return 1; // If the first row has no timestamp, it should be placed at the end of the list.
+	const char *time_str2 = stickynote_row_get_subtitle (STICKYNOTE_ROW (row2));
+	if (time_str2 == NULL) return -1; // If the second row has no timestamp, it should be placed at the beginning of the list.
 
 	return memcmp (time_str2, time_str1, TIME_STRING_LENGTH); // Because the TIME_STRING_FORMAT is fixed, we can use memcmp to compare the timestamps.
 }
+
+static void
+stickynote_window_open_note (StickynoteWindow *self, gpointer user_data);
 
 static void
 gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
@@ -164,29 +170,33 @@ gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 
 	const char *title = NULL;
 	const char *timestamp = NULL;
-	metadata_get_data (data, NULL, &title, &timestamp);
+	int color_scheme = 0;
+	metadata_get_data (data, &color_scheme, &title, &timestamp);
 
 	int year, month, day, hour, minute, second;
-	timestamp_parse (timestamp, &year, &month, &day, &hour, &minute, &second);
+	if (timestamp != NULL)
+		timestamp_parse (timestamp, &year, &month, &day, &hour, &minute, &second);
 
 	g_autofree gchar *date_str = g_strdup_printf (TIME_STRING_FORMAT, year, month, day, hour, minute, second); // Convert the timestamp to a string
 
 	GtkWidget *row = metadata_get_user_data (data);
 
-	if (row == NULL)
+	if (row == NULL) // A new note is added
 	{
-		row = adw_action_row_new ();
-		adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
-		adw_action_row_set_subtitle (ADW_ACTION_ROW (row), date_str);
+		self->note_num++;
+		row = stickynote_row_new (title, date_str);
+		g_signal_connect_swapped (row, "edit-request", G_CALLBACK (stickynote_window_open_note), self);
 		g_hash_table_insert (self->metadata_table, row, data);
 		metadata_add_user_data (data, row);
 		gtk_list_box_prepend (self->list_box, row);
 	}
 	else
 	{
-		adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
-		adw_action_row_set_subtitle (ADW_ACTION_ROW (row), date_str);
+		stickynote_row_set_title (STICKYNOTE_ROW (row), title);
+		stickynote_row_set_subtitle (STICKYNOTE_ROW (row), date_str);
 	}
+
+	stickynote_row_update_color_scheme (STICKYNOTE_ROW (row), color_scheme);
 }
 
 static void
@@ -196,7 +206,6 @@ on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, gcha
 
 	if (!save_metadata_to_file (data, content)) return;
 
-	self->note_num++;
 	stickynote_window_show_note_status (self);
 
 	gtk_list_box_update_rows (self, data);
@@ -204,12 +213,21 @@ on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, gcha
 	gtk_list_box_invalidate_sort (self->list_box); // Sort the list again to reflect the new row.
 }
 
+/* This callback MUST be called by `g_signal_connect_swapped` */
 static void
-stickynote_window_create_new_note (StickynoteWindow *self)
+stickynote_window_open_note (StickynoteWindow *self, gpointer user_data)
 {
-	Metadata *data = metadata_new(NULL);
-	StickynoteEditorWindow *editor_window = stickynote_editor_window_new (self->app, data);
-	g_signal_connect (editor_window, "file-save", G_CALLBACK (on_stickynote_saved), self);
+	GtkWidget *action_widget = user_data;
+	Metadata *data = NULL;
+
+	if (STICKYNOTE_IS_ROW (action_widget)) // User clicked the row, get the metadata from the row.
+		data = g_hash_table_lookup (self->metadata_table, action_widget);
+	else if (GTK_IS_BUTTON (action_widget)) // User clicked the 'New' button, create a new note.
+		data = metadata_new (NULL);
+
+	g_return_if_fail (data != NULL); // Check if the data is valid
+
+	StickynoteEditorWindow *editor_window = stickynote_editor_window_new_full (self->app, data, G_CALLBACK (on_stickynote_saved), self);
 	gtk_window_present (GTK_WINDOW (editor_window));
 }
 
@@ -234,7 +252,7 @@ stickynote_window_class_init (StickynoteWindowClass *klass)
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-window.ui");
-	gtk_widget_class_bind_template_callback (widget_class, stickynote_window_create_new_note);
+	gtk_widget_class_bind_template_callback (widget_class, stickynote_window_open_note);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, toolbar);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, new_button);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, status_page);
@@ -268,8 +286,7 @@ stickynote_window_init_notes (StickynoteWindow *self)
 		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
 		Metadata *data = metadata_new (path);
 
-		if (data == NULL) continue;
-		self->note_num++;
+		if (data == NULL) continue; // Ignore invalid files
 
 		gtk_list_box_update_rows (self, data);
 	}
