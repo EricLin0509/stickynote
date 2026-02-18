@@ -5,6 +5,6 @@ Icon=com.ericlin.stickynote
 Terminal=false
 Type=Application
 Categories=Utility;
-Keywords=GTK;
+Keywords=stickynote;note;
 StartupNotify=true
 DBusActivatable=true

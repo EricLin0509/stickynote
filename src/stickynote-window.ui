@@ -15,7 +15,7 @@
                 <signal name="clicked" handler="stickynote_window_create_new_note" swapped="true"/>
                 <property name="child">
                   <object class="AdwButtonContent">
-                    <property name="label">New</property>
+                    <property name="label" translatable="yes">New</property>
                     <property name="icon-name">new-stickynote-symbolic</property>
                     <property name="use-underline">true</property>
                   </object>
@@ -34,7 +34,6 @@
         </child>
         <property name="content">
           <object class="AdwStatusPage" id="status_page">
-            <property name="title">StickyNote</property>
             <property name="child">
               <object class="GtkListBox" id="list_box">
                 <property name="selection-mode">none</property>
@@ -63,7 +62,7 @@
         <attribute name="action">app.about</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_Quit StickyNote</attribute>
+        <attribute name="label" translatable="yes">_Quit</attribute>
         <attribute name="action">app.quit</attribute>
       </item>
     </section>

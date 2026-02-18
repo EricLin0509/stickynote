@@ -1,0 +1,132 @@
+# Chinese translations for PACKAGE package
+# Copyright (C) 2026 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+#  <ericlin050914@gmail.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-18 17:24+0800\n"
+"PO-Revision-Date: 2026-02-18 16:57+0800\n"
+"Last-Translator:  <ericlin050914@gmail.com>\n"
+"Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: data/com.ericlin.stickynote.desktop.in:2
+msgid "stickynote"
+msgstr "便签"
+
+#: data/com.ericlin.stickynote.desktop.in:8
+msgid "stickynote;note;"
+msgstr "便签;笔记;"
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:7
+msgid "Stickynote"
+msgstr "便签"
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:8
+msgid "Keep the summary shorter, between 10 and 35 characters"
+msgstr ""
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:10
+msgid "No description"
+msgstr ""
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:14
+msgid "Developer name"
+msgstr ""
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:52
+#: data/com.ericlin.stickynote.metainfo.xml.in:56
+msgid "A caption"
+msgstr ""
+
+#: data/com.ericlin.stickynote.gschema.xml:6
+msgid "Notes Storage Location"
+msgstr "笔记存储位置"
+
+#: data/com.ericlin.stickynote.gschema.xml:7
+msgid "Where the notebooks are stored (requires app restart)"
+msgstr "指定笔记存储位置（需要重新启动）"
+
+#: src/stickynote-window.c:59
+msgid "No notes found"
+msgstr "未找到笔记"
+
+#: src/stickynote-window.c:60
+msgid "Create a new note by clicking the 'New' button"
+msgstr "按下新建按钮以创建新的笔记"
+
+#: src/stickynote-window.c:64 src/stickynote-window.ui:6
+#: src/stickynote-editor-window.ui:6
+msgid "StickyNote"
+msgstr "便签"
+
+#: src/stickynote-window.c:66
+#, c-format
+msgid "%zu note%s in total"
+msgstr "共有%zu个笔记"
+
+#: src/stickynote-window.ui:18
+msgid "New"
+msgstr "新建"
+
+#: src/stickynote-window.ui:29 src/stickynote-editor-window.ui:28
+msgid "Main Menu"
+msgstr "主菜单"
+
+#: src/stickynote-window.ui:53
+msgid "_Preferences"
+msgstr "首选项"
+
+#: src/stickynote-window.ui:57
+msgid "_Keyboard Shortcuts"
+msgstr "快捷键"
+
+#: src/stickynote-window.ui:61
+msgid "_About StickyNote"
+msgstr "关于便签"
+
+#: src/stickynote-window.ui:65 src/stickynote-editor-window.ui:84
+msgid "_Quit"
+msgstr "退出"
+
+#: src/theme-selector.ui:28
+msgid "Red"
+msgstr "红色"
+
+#: src/theme-selector.ui:42
+msgid "Orange"
+msgstr "橙色"
+
+#: src/theme-selector.ui:55
+msgid "Yellow"
+msgstr "黄色"
+
+#: src/theme-selector.ui:75
+msgid "Green"
+msgstr "绿色"
+
+#: src/theme-selector.ui:89
+msgid "Blue"
+msgstr "蓝色"
+
+#: src/theme-selector.ui:103
+msgid "Purple"
+msgstr "紫色"
+
+#: src/stickynote-editor-window.c:190
+msgid "Untitled"
+msgstr "未命名"
+
+#: src/stickynote-editor-window.ui:15 src/stickynote-editor-window.ui:16
+msgid "Emojis"
+msgstr "表情符号"
+
+#: src/stickynote-editor-window.ui:80
+msgid "Save"
+msgstr "保存"

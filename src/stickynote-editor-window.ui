@@ -81,7 +81,7 @@
         <attribute name="action">win.save</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_Quit StickyNote</attribute>
+        <attribute name="label" translatable="yes">_Quit</attribute>
         <attribute name="action">app.quit</attribute>
       </item>
     </section>

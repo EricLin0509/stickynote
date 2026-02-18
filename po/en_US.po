@@ -1,0 +1,133 @@
+# English translations for PACKAGE package.
+# Copyright (C) 2026 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+#  <ericlin050914@gmail.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-18 17:24+0800\n"
+"PO-Revision-Date: 2026-02-18 16:56+0800\n"
+"Last-Translator:  <ericlin050914@gmail.com>\n"
+"Language-Team: English\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ASCII\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/com.ericlin.stickynote.desktop.in:2
+msgid "stickynote"
+msgstr "stickynote"
+
+#: data/com.ericlin.stickynote.desktop.in:8
+msgid "stickynote;note;"
+msgstr "stickynote;note;"
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:7
+msgid "Stickynote"
+msgstr "Stickynote"
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:8
+msgid "Keep the summary shorter, between 10 and 35 characters"
+msgstr "Keep the summary shorter, between 10 and 35 characters"
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:10
+msgid "No description"
+msgstr "No description"
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:14
+msgid "Developer name"
+msgstr "Developer name"
+
+#: data/com.ericlin.stickynote.metainfo.xml.in:52
+#: data/com.ericlin.stickynote.metainfo.xml.in:56
+msgid "A caption"
+msgstr "A caption"
+
+#: data/com.ericlin.stickynote.gschema.xml:6
+msgid "Notes Storage Location"
+msgstr "Notes Storage Location"
+
+#: data/com.ericlin.stickynote.gschema.xml:7
+msgid "Where the notebooks are stored (requires app restart)"
+msgstr "Where the notebooks are stored (requires app restart)"
+
+#: src/stickynote-window.c:59
+msgid "No notes found"
+msgstr "No notes found"
+
+#: src/stickynote-window.c:60
+msgid "Create a new note by clicking the 'New' button"
+msgstr "Create a new note by clicking the 'New' button"
+
+#: src/stickynote-window.c:64 src/stickynote-window.ui:6
+#: src/stickynote-editor-window.ui:6
+msgid "StickyNote"
+msgstr "StickyNote"
+
+#: src/stickynote-window.c:66
+#, c-format
+msgid "%zu note%s in total"
+msgstr "%zu note%s in total"
+
+#: src/stickynote-window.ui:18
+msgid "New"
+msgstr "New"
+
+#: src/stickynote-window.ui:29 src/stickynote-editor-window.ui:28
+msgid "Main Menu"
+msgstr "Main Menu"
+
+#: src/stickynote-window.ui:53
+msgid "_Preferences"
+msgstr "Preferences"
+
+#: src/stickynote-window.ui:57
+msgid "_Keyboard Shortcuts"
+msgstr "Keyboard Shortcuts"
+
+#: src/stickynote-window.ui:61
+msgid "_About StickyNote"
+msgstr "About StickyNote"
+
+#: src/stickynote-window.ui:65 src/stickynote-editor-window.ui:84
+msgid "_Quit"
+msgstr "Quit"
+
+#: src/theme-selector.ui:28
+msgid "Red"
+msgstr "Red"
+
+#: src/theme-selector.ui:42
+msgid "Orange"
+msgstr "Orange"
+
+#: src/theme-selector.ui:55
+msgid "Yellow"
+msgstr "Yellow"
+
+#: src/theme-selector.ui:75
+msgid "Green"
+msgstr "Green"
+
+#: src/theme-selector.ui:89
+msgid "Blue"
+msgstr "Blue"
+
+#: src/theme-selector.ui:103
+msgid "Purple"
+msgstr "Purple"
+
+#: src/stickynote-editor-window.c:190
+msgid "Untitled"
+msgstr "Untitled"
+
+#: src/stickynote-editor-window.ui:15 src/stickynote-editor-window.ui:16
+msgid "Emojis"
+msgstr "Emojis"
+
+#: src/stickynote-editor-window.ui:80
+msgid "Save"
+msgstr "Save"

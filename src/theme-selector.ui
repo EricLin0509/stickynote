@@ -3,18 +3,17 @@
   <requires lib="gtk" version="4.0"/>
   <requires lib="Adw" version="1.0"/>
   <template class="ThemeSelector" parent="GtkWidget">
-    <property name="hexpand">true</property>
-    <property name="vexpand">true</property>
     <property name="margin-top">10px</property>
     <property name="margin-bottom">10px</property>
+    <property name="margin-start">10px</property>
+    <property name="margin-end">10px</property>
     <child>
       <object class="GtkBox" id="box">
-        <property name="vexpand">true</property>
         <property name="orientation">vertical</property>
         <property name="spacing">10</property>
         <child>
           <object class="GtkBox">
-            <property name="vexpand">true</property>
+            <property name="spacing">10</property>
             <property name="orientation">horizontal</property>
             <child>
               <object class="GtkCheckButton" id="red">
@@ -26,7 +25,7 @@
                 <property name="halign">center</property>
                 <property name="group">yellow</property>
                 <property name="focus-on-click">false</property>
-                <property name="tooltip-text" translatable="yes">Red style</property>
+                <property name="tooltip-text" translatable="yes">Red</property>
                 <signal name="toggled" handler="on_checkbutton_toggled" swapped="true"/>
               </object>
             </child>
@@ -40,7 +39,7 @@
                 <property name="halign">center</property>
                 <property name="group">yellow</property>
                 <property name="focus-on-click">false</property>
-                <property name="tooltip-text" translatable="yes">Orange style</property>
+                <property name="tooltip-text" translatable="yes">Orange</property>
                 <signal name="toggled" handler="on_checkbutton_toggled" swapped="true"/>
               </object>
             </child>
@@ -53,7 +52,7 @@
                 <property name="hexpand">true</property>
                 <property name="halign">center</property>
                 <property name="focus-on-click">false</property>
-                <property name="tooltip-text" translatable="yes">Yellow style</property>
+                <property name="tooltip-text" translatable="yes">Yellow</property>
                 <signal name="toggled" handler="on_checkbutton_toggled" swapped="true"/>
               </object>
             </child>
@@ -61,7 +60,7 @@
         </child>
         <child>
           <object class="GtkBox">
-            <property name="vexpand">true</property>
+            <property name="spacing">10</property>
             <property name="orientation">horizontal</property>
             <child>
               <object class="GtkCheckButton" id="green">
@@ -73,7 +72,7 @@
                 <property name="halign">center</property>
                 <property name="group">yellow</property>
                 <property name="focus-on-click">false</property>
-                <property name="tooltip-text" translatable="yes">Green style</property>
+                <property name="tooltip-text" translatable="yes">Green</property>
                 <signal name="toggled" handler="on_checkbutton_toggled" swapped="true"/>
               </object>
             </child>
@@ -87,7 +86,7 @@
                 <property name="halign">center</property>
                 <property name="group">yellow</property>
                 <property name="focus-on-click">false</property>
-                <property name="tooltip-text" translatable="yes">Blue style</property>
+                <property name="tooltip-text" translatable="yes">Blue</property>
                 <signal name="toggled" handler="on_checkbutton_toggled" swapped="true"/>
               </object>
             </child>
@@ -101,7 +100,7 @@
                 <property name="halign">center</property>
                 <property name="group">yellow</property>
                 <property name="focus-on-click">false</property>
-                <property name="tooltip-text" translatable="yes">Purple style</property>
+                <property name="tooltip-text" translatable="yes">Purple</property>
                 <signal name="toggled" handler="on_checkbutton_toggled" swapped="true"/>
               </object>
             </child>
