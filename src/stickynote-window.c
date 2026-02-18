@@ -19,6 +19,7 @@
  */
 
 #include <glib/gi18n.h>
+#include <sys/stat.h>
 
 #include "config.h"
 
@@ -41,15 +42,60 @@ struct _StickynoteWindow
 	/* Private */
 	GApplication *app;
 	GHashTable *metadata_table;
+	size_t note_num;
 };
 
 G_DEFINE_FINAL_TYPE (StickynoteWindow, stickynote_window, ADW_TYPE_APPLICATION_WINDOW)
 
 /* GObject essential methods */
 
-static char *
-get_note_dir_realpath (void)
+static void
+stickynote_window_show_note_status (StickynoteWindow *self)
 {
+	g_return_if_fail (STICKYNOTE_IS_WINDOW (self));
+
+	if (self->note_num == 0)
+	{
+		adw_status_page_set_title (self->status_page, gettext ("No notes found"));
+		adw_status_page_set_description (self->status_page, gettext ("Create a new note by clicking the 'New' button"));
+	}
+	else
+	{
+		adw_status_page_set_title (self->status_page, gettext ("StickyNote"));
+		gchar *should_include_plural = (self->note_num > 1) ? "s" : "";
+		g_autofree gchar *description = g_strdup_printf (gettext ("%zu note%s in total"), self->note_num, should_include_plural);
+		adw_status_page_set_description (self->status_page, description);
+	}
+}
+
+static inline gboolean
+ensure_directories_exist (const gchar *dir_path)
+{
+	struct stat st;
+
+	if (stat (dir_path, &st) == 0)
+	{
+		if (S_ISDIR (st.st_mode)) return TRUE; // Directory exists
+		else // If the path exists but is not a directory
+		{
+			g_critical ("%s is not a directory", dir_path);
+			return FALSE;
+		}
+	}
+
+	g_warning ("Directory %s does not exist, creating...", dir_path);
+
+	g_mkdir_with_parents (dir_path, 0755);
+
+	return TRUE;
+}
+
+static char *
+get_note_dir_realpath (gboolean *is_directory)
+{
+	gboolean is_valid_dir, *is_valid_dir_ptr;
+	is_valid_dir_ptr = is_directory ? is_directory : &is_valid_dir; // If is_directory is NULL, we will allocate memory for it.
+
 	GSettings *setting = g_settings_new ("com.ericlin.stickynote");
 	g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
 	g_autofree gchar *realpath = NULL;
@@ -73,6 +119,8 @@ get_note_dir_realpath (void)
 		realpath = g_build_filename (g_get_current_dir (), notes_dir, NULL);
 	}
 
+	*is_valid_dir_ptr = ensure_directories_exist (realpath);
+
 	return g_steal_pointer (&realpath);
 }
 
@@ -83,7 +131,9 @@ save_metadata_to_file (Metadata *data, const gchar *content)
 
 	if (metadata_get_path (data) == NULL)
 	{
-		g_autofree gchar *notes_dir = get_note_dir_realpath ();
+		gboolean is_valid_dir;
+		g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
+		if (notes_dir == NULL || !is_valid_dir) return FALSE;
 		g_autofree gchar *file_name = metadata_build_file_name (data);
 		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
 		metadata_set_path (data, path);
@@ -146,6 +196,9 @@ on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, gcha
 
 	if (!save_metadata_to_file (data, content)) return;
 
+	self->note_num++;
+	stickynote_window_show_note_status (self);
+
 	gtk_list_box_update_rows (self, data);
 
 	gtk_list_box_invalidate_sort (self->list_box); // Sort the list again to reflect the new row.
@@ -201,13 +254,14 @@ clear_hash_table_element (gpointer data)
 static void
 stickynote_window_init_notes (StickynoteWindow *self)
 {
-	g_autofree gchar *notes_dir = get_note_dir_realpath ();
-	if (notes_dir == NULL) return;
+	gboolean is_valid_dir;
+	g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
+	if (notes_dir == NULL || !is_valid_dir) return;
 
 	GDir *dir = g_dir_open (notes_dir, 0, NULL);
 	if (dir == NULL) return;
 
-	size_t note_num = 0;
+	self->note_num = 0;
 	const gchar *file_name;
 	while ((file_name = g_dir_read_name (dir)) != NULL)
 	{
@@ -215,20 +269,13 @@ stickynote_window_init_notes (StickynoteWindow *self)
 		Metadata *data = metadata_new (path);
 
 		if (data == NULL) continue;
-		note_num++;
+		self->note_num++;
 
 		gtk_list_box_update_rows (self, data);
 	}
 
-	if (note_num == 0)
-	{
-		adw_status_page_set_title (self->status_page, gettext ("No notes found"));
-		adw_status_page_set_description (self->status_page, gettext ("Create a new note by clicking the 'New' button"));
-	}
-	else
-	{
-		gtk_list_box_invalidate_sort (self->list_box);
-	}
+	stickynote_window_show_note_status (self);
+	gtk_list_box_invalidate_sort (self->list_box);
 }
 
 static void
