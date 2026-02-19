@@ -11,12 +11,12 @@
 /* Dark color scheme */
 @media (prefers-color-scheme: dark) {
   :root {
-    --yellow-stickynote: #a5942d;
+    --yellow-stickynote: #8c7542;
     --blue-stickynote: #4a5c7a;
     --green-stickynote: #5a7a5a;
     --red-stickynote: #7a5a5a;
     --purple-stickynote: #6a5a7a;
-    --orange-stickynote: #c07632;
+    --orange-stickynote: #9d6d3f;
     --text-color: #fff;
   }
 }
