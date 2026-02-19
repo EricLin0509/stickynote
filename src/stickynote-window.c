@@ -206,9 +206,9 @@ on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, gcha
 
 	if (!save_metadata_to_file (data, content)) return;
 
-	stickynote_window_show_note_status (self);
-
 	gtk_list_box_update_rows (self, data);
+
+	stickynote_window_show_note_status (self);
 
 	gtk_list_box_invalidate_sort (self->list_box); // Sort the list again to reflect the new row.
 }

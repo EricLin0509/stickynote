@@ -27,7 +27,7 @@ G_BEGIN_DECLS
 
 #define STICKYNOTE_TYPE_ROW stickynote_row_get_type ()
 
-G_DECLARE_FINAL_TYPE (StickynoteRow, stickynote_row, STICKYNOTE, ROW, GtkListBoxRow)
+G_DECLARE_FINAL_TYPE (StickynoteRow, stickynote_row, STICKYNOTE, ROW, AdwActionRow)
 
 GtkWidget *
 stickynote_row_new (const char *title, const char *subtitle);

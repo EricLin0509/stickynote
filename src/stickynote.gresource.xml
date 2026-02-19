@@ -7,6 +7,7 @@
     <file preprocess="xml-stripblanks">theme-selector.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/new-stickynote-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/edit-note-symbolic.svg</file>
     <file>style.css</file>
   </gresource>
 </gresources>

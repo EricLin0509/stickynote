@@ -26,7 +26,6 @@
 struct _StickynoteRow {
     GtkWidget parent_instance;
 
-    AdwActionRow *action_row;
     AdwSplitButton *edit_button;
 
     gint last_color_scheme;
@@ -39,14 +38,14 @@ enum {
 
 static guint stickynote_row_signals[N_SIGNALS];
 
-G_DEFINE_FINAL_TYPE(StickynoteRow, stickynote_row, GTK_TYPE_LIST_BOX_ROW)
+G_DEFINE_FINAL_TYPE(StickynoteRow, stickynote_row, ADW_TYPE_ACTION_ROW)
 
 const char *
 stickynote_row_get_title (StickynoteRow *row)
 {
     g_return_val_if_fail (STICKYNOTE_IS_ROW (row), NULL);
 
-    return adw_preferences_row_get_title (ADW_PREFERENCES_ROW (row->action_row));
+    return adw_preferences_row_get_title (ADW_PREFERENCES_ROW (row));
 }
 
 const char *
@@ -54,7 +53,7 @@ stickynote_row_get_subtitle (StickynoteRow *row)
 {
     g_return_val_if_fail (STICKYNOTE_IS_ROW (row), NULL);
 
-    return adw_action_row_get_subtitle (row->action_row);
+    return adw_action_row_get_subtitle (ADW_ACTION_ROW (row));
 }
 
 void
@@ -62,7 +61,7 @@ stickynote_row_set_title (StickynoteRow *row, const char *title)
 {
     g_return_if_fail (STICKYNOTE_IS_ROW (row));
 
-    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row->action_row), title);
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), title);
 }
 
 void
@@ -70,7 +69,7 @@ stickynote_row_set_subtitle (StickynoteRow *row, const char *subtitle)
 {
     g_return_if_fail (STICKYNOTE_IS_ROW (row));
 
-    adw_action_row_set_subtitle (row->action_row, subtitle);
+    adw_action_row_set_subtitle (ADW_ACTION_ROW (row), subtitle);
 }
 
 void
@@ -93,9 +92,9 @@ stickynote_row_dispose (GObject *object)
 {
     StickynoteRow *self = STICKYNOTE_ROW (object);
 
-    GtkWidget *row = GTK_WIDGET (self->action_row);
+    GtkWidget *button = GTK_WIDGET (self->edit_button);
 
-    g_clear_pointer (&row, gtk_widget_unparent);
+    g_clear_pointer (&button, gtk_widget_unparent);
 
     G_OBJECT_CLASS (stickynote_row_parent_class)->dispose (object);
 }
@@ -109,7 +108,6 @@ stickynote_row_class_init(StickynoteRowClass *klass)
     GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-row.ui");
-    gtk_widget_class_bind_template_child (widget_class, StickynoteRow, action_row);
     gtk_widget_class_bind_template_child (widget_class, StickynoteRow, edit_button);
 
     stickynote_row_signals[EDIT_REQUEST] = g_signal_new ("edit-request",
@@ -144,7 +142,7 @@ stickynote_row_new (const char *title, const char *subtitle)
 {
     StickynoteRow *self = g_object_new (STICKYNOTE_TYPE_ROW, NULL);
 
-    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (self->action_row), title);
-    adw_action_row_set_subtitle (self->action_row, subtitle);
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (self), title);
+    adw_action_row_set_subtitle (ADW_ACTION_ROW (self), subtitle);
     return GTK_WIDGET (self);
 }
