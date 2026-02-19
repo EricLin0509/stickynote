@@ -44,7 +44,7 @@ static guint theme_selector_signals[N_SIGNALS];
 G_DEFINE_TYPE (ThemeSelector, theme_selector, GTK_TYPE_WIDGET)
 
 static void
-on_checkbutton_toggled (ThemeSelector *selector, GtkToggleButton* self)
+on_checkbutton_toggled (ThemeSelector *selector, GtkCheckButton* self)
 {
     const GtkCheckButton *buttons[] = {
         selector->red,
