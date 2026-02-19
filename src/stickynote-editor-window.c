@@ -33,13 +33,15 @@ struct _StickynoteEditorWindow
 	AdwApplicationWindow  parent_instance;
 
 	/* Template widgets */
-	GtkWidget *toolbar_view;
+	AdwNavigationView *navigation_view;
+	AdwNavigationPage *editor_page;
 	GtkTextView *text_view;
 	GtkTextBuffer *text_buffer;
 	GtkLabel *char_count_label;
 	GtkEmojiChooser *emoji_chooser;
-
 	GtkMenuButton *editor_menu;
+
+	AdwNavigationPage *change_title_page;
 
 	/* Private */
 	int last_color_scheme_index;
@@ -89,24 +91,67 @@ on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, Stickyn
 }
 
 static void
+emit_file_saved_signal (StickynoteEditorWindow *self)
+{
+	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
+
+  	GtkTextIter start;
+  	GtkTextIter end;
+	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
+	gchar *content = gtk_text_buffer_get_text (self->text_buffer, &start, &end, FALSE);
+
+	metadata_update (self->metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata, content);
+}
+
+static void
+on_title_apply (StickynoteEditorWindow *self, AdwEntryRow *entry_row)
+{
+	if (adw_entry_row_get_text_length (entry_row) == 0) return; // If the title is empty, do nothing
+
+	const char *title = gtk_editable_get_text (GTK_EDITABLE (entry_row));
+
+	metadata_update (self->metadata, -1, title, FALSE);
+
+	adw_navigation_view_pop (self->navigation_view);
+
+	adw_navigation_page_set_title (self->editor_page, title);
+
+	emit_file_saved_signal (self);
+}
+
+static void
+change_title_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
+{
+	StickynoteEditorWindow *self = user_data;
+
+	adw_navigation_view_push (self->navigation_view, self->change_title_page);
+}
+
+static void
 file_saved_action (GSimpleAction *action,
                                 GVariant      *parameter,
                                 gpointer       user_data)
 {
 	StickynoteEditorWindow *self = user_data;
 
-  	GtkTextIter start;
-  	GtkTextIter end;
-	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
-	gchar *content = gtk_text_buffer_get_text(self->text_buffer, &start, &end, FALSE);
+	const gchar *title = NULL;
+	metadata_get_data (self->metadata, NULL, &title, NULL);
 
-	metadata_update (self->metadata, self->last_color_scheme_index, NULL, FALSE);
+	if (title == NULL)
+	{
+		change_title_action (NULL, NULL, self);
+		return;
+	}
 
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata, content);
+	emit_file_saved_signal (self);
 }
 
 static const GActionEntry window_actions[] = {
-	{ "save", file_saved_action }
+	{ "save", file_saved_action },
+	{ "change-title", change_title_action }
 };
 
 static void
@@ -114,7 +159,9 @@ stickynote_editor_window_dispose (GObject *object)
 {
 	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
 
-	g_clear_pointer (&self->toolbar_view, gtk_widget_unparent);
+	GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
+
+	g_clear_pointer (&navigation_view, gtk_widget_unparent);
 
 	if (metadata_get_path (self->metadata) == NULL)
 		metadata_clear (&self->metadata); // Only clear the metadata if the file isn't exist
@@ -146,12 +193,15 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-editor-window.ui");
 	gtk_widget_class_bind_template_callback (widget_class, on_emoji_picked_cb);
 	gtk_widget_class_bind_template_callback (widget_class, on_changed_cb);
-	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, toolbar_view);
+	gtk_widget_class_bind_template_callback (widget_class, on_title_apply);
+	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, navigation_view);
+	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, editor_page);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, text_view);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, text_buffer);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, char_count_label);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, emoji_chooser);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, editor_menu);
+	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, change_title_page);
 }
 
 static void
@@ -188,7 +238,7 @@ stickynote_editor_window_new (GApplication *app, Metadata *data)
 
 	metadata_get_data (data, &color_scheme, &title, NULL);
 
-	gtk_window_set_title (GTK_WINDOW (self), title ? title : gettext("Untitled"));
+	adw_navigation_page_set_title (self->editor_page, title ? title : gettext("Untitled"));
 
 	if (color_scheme == -1) // If no color scheme define, use random color
 	{

@@ -23,6 +23,12 @@
         <property name="title" translatable="yes">Editor</property>
         <child>
           <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Change title</property>
+            <property name="action-name">win.change-title</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Save</property>
             <property name="action-name">win.save</property>
           </object>

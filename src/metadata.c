@@ -443,6 +443,7 @@ metadata_save(Metadata *metadata, const gchar *content)
                                              TITLE_METADATA_STRING, metadata->title,
                                              COLOR_SCHEME_METADATA_STRING, metadata->color_scheme);
     int header_size = strlen(header_content);
+    metadata->content_offset = header_size; // Set the content offset to the end of the header
     int content_size = strlen(content);
     int total_content_size = header_size + content_size; // No need to write '\0' at the end because file has an EOF marker
 

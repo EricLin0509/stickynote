@@ -128,8 +128,6 @@ get_note_dir_realpath (gboolean *is_directory)
 static gboolean
 save_metadata_to_file (Metadata *data, const gchar *content)
 {
-	metadata_update (data, -1, NULL, TRUE); // Only update the timestamp
-
 	if (metadata_get_path (data) == NULL)
 	{
 		gboolean is_valid_dir;

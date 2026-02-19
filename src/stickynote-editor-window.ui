@@ -7,67 +7,111 @@
     <property name="default-width">450</property>
     <property name="default-height">450</property>
     <property name="content">
-      <object class="AdwToolbarView" id="toolbar_view">
-        <child type="top">
-          <object class="AdwHeaderBar">
-            <child type="start">
-              <object class="GtkMenuButton">
-                <property name="label" translatable="yes">Emojis</property>
-                <property name="tooltip-text" translatable="yes">Emojis</property>
-                <property name="popover">
-                  <object class="GtkEmojiChooser" id="emoji_chooser">
-                    <signal name="emoji-picked" handler="on_emoji_picked_cb" swapped="true"/>
+      <object class="AdwNavigationView" id="navigation_view">
+        <child>
+          <object class="AdwNavigationPage" id="editor_page">
+            <property name="tag">editor_page</property>
+            <property name="child">
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <child type="start">
+                      <object class="GtkMenuButton">
+                        <property name="label" translatable="yes">Emojis</property>
+                        <property name="tooltip-text" translatable="yes">Emojis</property>
+                        <property name="popover">
+                          <object class="GtkEmojiChooser" id="emoji_chooser">
+                            <signal name="emoji-picked" handler="on_emoji_picked_cb" swapped="true"/>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkMenuButton" id="editor_menu">
+                        <property name="primary">True</property>
+                        <property name="icon-name">open-menu-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Main Menu</property>
+                        <property name="menu-model">editor_menu_model</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <property name="content">
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="margin_start">8px</property>
+                    <property name="margin_end">8px</property>
+                    <child>
+                      <object class="GtkScrolledWindow">
+                        <property name="vexpand">true</property>
+                        <child>
+                          <object class="GtkTextView" id="text_view">
+                            <property name="wrap-mode">word-char</property>
+                            <property name="buffer">
+                              <object class="GtkTextBuffer" id="text_buffer">
+                                <signal name="changed" handler="on_changed_cb" swapped="true"/>
+                              </object>
+                            </property>
+                            <style>
+                              <class name="textview_adwaita"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="spacing">10</property>
+                        <property name="height-request">40</property>
+                        <property name="margin_bottom">2px</property>
+                        <child>
+                          <object class="GtkLabel" id="char_count_label">
+                            <property name="label">Characters 0</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                   </object>
                 </property>
               </object>
-            </child>
-            <child type="end">
-              <object class="GtkMenuButton" id="editor_menu">
-                <property name="primary">True</property>
-                <property name="icon-name">open-menu-symbolic</property>
-                <property name="tooltip-text" translatable="yes">Main Menu</property>
-                <property name="menu-model">editor_menu_model</property>
-              </object>
-            </child>
+            </property>
           </object>
         </child>
-        <property name="content">
-          <object class="GtkBox">
-            <property name="orientation">vertical</property>
-            <property name="margin_start">8px</property>
-            <property name="margin_end">8px</property>
-            <child>
-              <object class="GtkScrolledWindow">
-                <property name="vexpand">true</property>
-                <child>
-                  <object class="GtkTextView" id="text_view">
-                    <property name="wrap-mode">word-char</property>
-                    <property name="buffer">
-                      <object class="GtkTextBuffer" id="text_buffer">
-                        <signal name="changed" handler="on_changed_cb" swapped="true"/>
+        <child>
+          <object class="AdwNavigationPage" id="change_title_page">
+            <property name="title" translatable="yes">Enter title</property>
+            <property name="tag">change_title_page</property>
+            <property name="child">
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar"/>
+                </child>
+                <property name="content">
+                  <object class="AdwStatusPage">
+                    <property name="title" translatable="yes">Enter title</property>
+                    <property name="child">
+                      <object class="AdwClamp">
+                        <property name="maximum-size">600</property>
+                        <property name="tightening-threshold">300</property>
+                        <property name="child">
+                          <object class="AdwPreferencesGroup">
+                            <child>
+                              <object class="AdwEntryRow" id="title_entry">
+                                <property name="title">Enter the title here</property>
+                                <property name="show-apply-button">True</property>
+                                <signal name="apply" handler="on_title_apply" swapped="yes"/>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
                       </object>
                     </property>
-                    <style>
-                      <class name="textview_adwaita"/>
-                    </style>
                   </object>
-                </child>
+                </property>
               </object>
-            </child>
-            <child>
-              <object class="GtkBox">
-                <property name="spacing">10</property>
-                <property name="height-request">40</property>
-                <property name="margin_bottom">2px</property>
-                <child>
-                  <object class="GtkLabel" id="char_count_label">
-                    <property name="label">Characters 0</property>
-                  </object>
-                </child>
-              </object>
-            </child>
+            </property>
           </object>
-        </property>
+        </child>
       </object>
     </property>
   </template>
@@ -77,14 +121,13 @@
         <attribute name="custom">theme</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">Save</attribute>
-        <attribute name="action">win.save</attribute>
+        <attribute name="label" translatable="yes">Change title</attribute>
+        <attribute name="action">win.change-title</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_Quit</attribute>
-        <attribute name="action">app.quit</attribute>
+        <attribute name="label" translatable="yes">Save</attribute>
+        <attribute name="action">win.save</attribute>
       </item>
     </section>
   </menu>
 </interface>
-

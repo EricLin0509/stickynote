@@ -92,7 +92,7 @@ stickynote_application_about_action (GSimpleAction *action,
 	                       "translator-credits", _("translator-credits"),
 	                       "version", "0.1.0",
 	                       "developers", developers,
-	                       "copyright", "© 2025 Unknown",
+	                       "copyright", "© 2026 EricLin",
 	                       NULL);
 }
 
@@ -120,6 +120,9 @@ stickynote_application_init (StickynoteApplication *self)
 	                                 app_actions,
 	                                 G_N_ELEMENTS (app_actions),
 	                                 self);
+		gtk_application_set_accels_for_action (GTK_APPLICATION (self),
+	                                       "win.change-title",
+	                                       (const char *[]) { "<control>t", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
 	                                       "win.save",
 	                                       (const char *[]) { "<control>s", NULL });
