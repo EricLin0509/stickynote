@@ -315,11 +315,7 @@ stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback 
 {
 	StickynoteEditorWindow *self = stickynote_editor_window_new (app, data);
 
-	guint *file_saved_handler_id = g_new0 (guint, 1);
-
-	*file_saved_handler_id = g_signal_connect (self, "file-saved", file_save_signal_handler, user_data);
-
-	g_hash_table_insert (self->signal_ids, (void *)("file-saved"), file_saved_handler_id);
+	stickynote_editor_window_connect_signal (self, "file-saved", file_save_signal_handler, user_data);
 
 	return self;
 }
