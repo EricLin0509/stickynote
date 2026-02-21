@@ -48,7 +48,7 @@ struct _StickynoteEditorWindow
 
 	/* Private */
 	int last_color_scheme_index;
-	GList *signal_ids;
+	GHashTable *signal_ids;
 	Metadata *metadata;
 };
 
@@ -258,6 +258,8 @@ stickynote_editor_window_init (StickynoteEditorWindow *self)
 {
 	gtk_widget_init_template (GTK_WIDGET (self));
 
+	self->signal_ids = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+
 	GtkPopover *popover = gtk_menu_button_get_popover (self->editor_menu);
 
 	ThemeSelector *theme_selector = theme_selector_new ();
@@ -317,7 +319,7 @@ stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback 
 
 	*file_saved_handler_id = g_signal_connect (self, "file-saved", file_save_signal_handler, user_data);
 
-	self->signal_ids = g_list_prepend (self->signal_ids, file_saved_handler_id);
+	g_hash_table_insert (self->signal_ids, (void *)("file-saved"), file_saved_handler_id);
 
 	return self;
 }
@@ -327,19 +329,25 @@ stickynote_editor_window_connect_signal (StickynoteEditorWindow *self, const cha
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
 
-	guint has_signal_id = g_signal_lookup (signal_name, G_TYPE_FROM_CLASS (STICKYNOTE_EDITOR_WINDOW_GET_CLASS (self)));
+	guint *signal_id = g_hash_table_lookup (self->signal_ids, signal_name);
 
-	if (has_signal_id > 0)
+	if (signal_id != NULL)
 	{
 		g_warning ("Signal %s already connected", signal_name);
 		return;
 	}
 
-	guint *signal_id = g_new0 (guint, 1);
+	signal_id = g_new0 (guint, 1);
 
 	*signal_id = g_signal_connect (self, signal_name, handler_func, user_data);
 
-	self->signal_ids = g_list_prepend (self->signal_ids, signal_id);
+	g_hash_table_insert (self->signal_ids, (void *)signal_name, signal_id);
+}
+
+static inline void
+signal_disconnect_ghfunc (gpointer key, gpointer value, gpointer user_data)
+{
+	g_signal_handler_disconnect (user_data, *(guint *)value);
 }
 
 void
@@ -347,15 +355,10 @@ stickynote_editor_window_disconnect_all_signals (StickynoteEditorWindow *self)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
 
-	GList *signal_ids = self->signal_ids;
+	if (self->signal_ids == NULL) return;
 
-	while (signal_ids != NULL)
-	{
-		g_signal_handler_disconnect (self, *(int*)signal_ids->data);
-		g_free(signal_ids->data); // Free the allocated memory for the signal id
-		signal_ids = signal_ids->next;
-	}
+	g_hash_table_foreach (self->signal_ids, (GHFunc)signal_disconnect_ghfunc, self);
 
-	g_list_free (self->signal_ids);
+	g_hash_table_remove_all (self->signal_ids);
 	self->signal_ids = NULL;
 }
