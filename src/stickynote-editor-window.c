@@ -21,6 +21,7 @@
 #include <glib/gi18n.h>
 
 #include "config.h"
+#include "note-dir.h"
 
 #define COLOR_SCHEME_IMPLEMENTATION /* For One file header */
 #include "color-scheme.h"
@@ -47,6 +48,7 @@ struct _StickynoteEditorWindow
 
 	/* Private */
 	int last_color_scheme_index;
+	GList *signal_ids;
 	Metadata *metadata;
 };
 
@@ -61,6 +63,28 @@ static guint stickynote_editor_window_signals[N_SIGNALS];
 
 /* GObject essential methods */
 
+static gboolean
+save_metadata_to_file (Metadata *data, const gchar *content)
+{
+	if (metadata_get_path (data) == NULL)
+	{
+		gboolean is_valid_dir;
+		g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
+		if (notes_dir == NULL || !is_valid_dir) return FALSE;
+		g_autofree gchar *file_name = metadata_build_file_name (data);
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		metadata_set_path (data, path);
+	}
+
+	if (!metadata_save (data, content))
+	{
+		g_critical ("Failed to save file");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static void
 emit_file_saved_signal (StickynoteEditorWindow *self)
 {
@@ -72,7 +96,9 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
 	gchar *content = gtk_text_buffer_get_text (self->text_buffer, &start, &end, FALSE);
 
 	metadata_update (self->metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata, content);
+	if (!save_metadata_to_file (self->metadata, content)) return; // If failed to save, return
+
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata);
 }
 
 static void
@@ -178,6 +204,8 @@ stickynote_editor_window_dispose (GObject *object)
 {
 	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
 
+	stickynote_editor_window_disconnect_all_signals (self);
+
 	GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
 
 	g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -197,7 +225,7 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-save",
+	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-saved",
             G_TYPE_FROM_CLASS (klass),
             G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
             0,
@@ -205,9 +233,8 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             NULL,
             NULL,
             G_TYPE_NONE,
-            2,
-            G_TYPE_POINTER, // The metadata pointer
-			G_TYPE_POINTER); // The content pointer
+            1,
+            G_TYPE_POINTER); // The metadata pointer
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-editor-window.ui");
 	gtk_widget_class_bind_template_callback (widget_class, on_emoji_picked_cb);
@@ -286,7 +313,49 @@ stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback 
 {
 	StickynoteEditorWindow *self = stickynote_editor_window_new (app, data);
 
-	g_signal_connect (self, "file-save", file_save_signal_handler, user_data);
+	guint *file_saved_handler_id = g_new0 (guint, 1);
+
+	*file_saved_handler_id = g_signal_connect (self, "file-saved", file_save_signal_handler, user_data);
+
+	self->signal_ids = g_list_prepend (self->signal_ids, file_saved_handler_id);
 
 	return self;
+}
+
+void
+stickynote_editor_window_connect_signal (StickynoteEditorWindow *self, const char *signal_name, GCallback handler_func, gpointer user_data)
+{
+	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
+
+	guint has_signal_id = g_signal_lookup (signal_name, G_TYPE_FROM_CLASS (STICKYNOTE_EDITOR_WINDOW_GET_CLASS (self)));
+
+	if (has_signal_id > 0)
+	{
+		g_warning ("Signal %s already connected", signal_name);
+		return;
+	}
+
+	guint *signal_id = g_new0 (guint, 1);
+
+	*signal_id = g_signal_connect (self, signal_name, handler_func, user_data);
+
+	self->signal_ids = g_list_prepend (self->signal_ids, signal_id);
+}
+
+void
+stickynote_editor_window_disconnect_all_signals (StickynoteEditorWindow *self)
+{
+	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
+
+	GList *signal_ids = self->signal_ids;
+
+	while (signal_ids != NULL)
+	{
+		g_signal_handler_disconnect (self, *(int*)signal_ids->data);
+		g_free(signal_ids->data); // Free the allocated memory for the signal id
+		signal_ids = signal_ids->next;
+	}
+
+	g_list_free (self->signal_ids);
+	self->signal_ids = NULL;
 }
