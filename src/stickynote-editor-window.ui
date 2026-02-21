@@ -78,9 +78,9 @@
           </object>
         </child>
         <child>
-          <object class="AdwNavigationPage" id="change_title_page">
-            <property name="title" translatable="yes">Enter title</property>
-            <property name="tag">change_title_page</property>
+          <object class="AdwNavigationPage" id="set_title_page">
+            <property name="title" translatable="yes">Set title</property>
+            <property name="tag">set_title_page</property>
             <property name="child">
               <object class="AdwToolbarView">
                 <child type="top">
@@ -88,18 +88,35 @@
                 </child>
                 <property name="content">
                   <object class="AdwStatusPage">
-                    <property name="title" translatable="yes">Enter title</property>
+                    <property name="title" translatable="yes">Set a title</property>
+                    <property name="description" translatable="yes">You need to set a title before saving this note</property>
                     <property name="child">
                       <object class="AdwClamp">
                         <property name="maximum-size">600</property>
                         <property name="tightening-threshold">300</property>
                         <property name="child">
-                          <object class="AdwPreferencesGroup">
+                          <object class="GtkBox">
+                            <property name="orientation">vertical</property>
                             <child>
-                              <object class="AdwEntryRow" id="title_entry">
-                                <property name="title">Enter the title here</property>
-                                <property name="show-apply-button">True</property>
-                                <signal name="apply" handler="on_title_apply" swapped="yes"/>
+                              <object class="AdwPreferencesGroup">
+                                <child>
+                                  <object class="AdwEntryRow" id="title_entry">
+                                    <property name="title">Enter the title here</property>
+                                    <signal name="changed" handler="check_title_valid" swapped="yes"/>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="save_button">
+                                <property name="sensitive">false</property>
+                                <property name="halign">end</property>
+                                <property name="height-request">40</property>
+                                <property name="label">Save</property>
+                                <signal name="clicked" handler="on_title_apply" swapped="yes"/>
+                                <style>
+                                  <class name="suggested-action"/>
+                                </style>
                               </object>
                             </child>
                           </object>
@@ -119,10 +136,6 @@
     <section>
       <item>
         <attribute name="custom">theme</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Change title</attribute>
-        <attribute name="action">win.change-title</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">Save</attribute>
