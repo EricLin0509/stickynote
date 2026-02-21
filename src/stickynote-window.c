@@ -43,6 +43,7 @@ struct _StickynoteWindow
 	/* Private */
 	GApplication *app;
 	GHashTable *metadata_table;
+	AdwDialog *alert_dialog;
 	size_t note_num;
 };
 
@@ -161,6 +162,45 @@ gtk_listbox_sort_func (GtkListBoxRow *row1, GtkListBoxRow *row2, gpointer user_d
 static void
 stickynote_window_open_note (StickynoteWindow *self, gpointer user_data);
 
+static inline void
+perform_delete (StickynoteWindow *self, StickynoteRow *row)
+{
+	Metadata *data = g_hash_table_lookup (self->metadata_table, row);
+
+	if (data == NULL) return;
+
+	if (!metadata_delete_file (data)) return; // Failed to delete the file
+
+	self->note_num--;
+
+	g_hash_table_remove (self->metadata_table, row);
+	gtk_list_box_remove (self->list_box, GTK_WIDGET (row));
+	gtk_list_box_invalidate_sort (self->list_box); // Sort the list again to reflect the deletion.
+
+	stickynote_window_show_note_status (self);
+}
+
+static void
+stickynote_window_alert_choice (AdwAlertDialog *dialog, GAsyncResult *result, gpointer user_data)
+{
+	StickynoteRow *row = user_data;
+
+	StickynoteWindow *window = STICKYNOTE_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (dialog), STICKYNOTE_TYPE_WINDOW));
+
+	const char *choice = adw_alert_dialog_choose_finish (dialog, result);
+
+	if (memcmp (choice, "cancel", 6) == 0) return; // User clicked 'Cancel'
+
+	perform_delete (window, row); // Delete the note
+}
+
+static void
+stickynote_window_delete_note (StickynoteWindow *self, gpointer user_data)
+{
+	adw_alert_dialog_choose (ADW_ALERT_DIALOG (self->alert_dialog), GTK_WIDGET (self), NULL,
+                        (GAsyncReadyCallback) stickynote_window_alert_choice, user_data); // Show the alert dialog
+}
+
 static void
 gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 {
@@ -184,6 +224,7 @@ gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 		self->note_num++;
 		row = stickynote_row_new (title, date_str);
 		g_signal_connect_swapped (row, "edit-request", G_CALLBACK (stickynote_window_open_note), self);
+		g_signal_connect_swapped (row, "delete-request", G_CALLBACK (stickynote_window_delete_note), self);
 		g_hash_table_insert (self->metadata_table, row, data);
 		metadata_add_user_data (data, row);
 		gtk_list_box_prepend (self->list_box, row);
@@ -293,6 +334,28 @@ stickynote_window_init_notes (StickynoteWindow *self)
 	gtk_list_box_invalidate_sort (self->list_box);
 }
 
+static inline void
+stickynote_init_alert_dialog (StickynoteWindow *self)
+{
+	self->alert_dialog = adw_alert_dialog_new (gettext ("Delete Note?"), 
+		gettext ("This will permanently delete the note. Are you sure?"));
+
+	g_object_ref_sink (self->alert_dialog); // Keep a reference to the dialog
+
+  	adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (self->alert_dialog),
+                                "cancel",  gettext("Cancel"),
+                                "delete", gettext("Delete"),
+                                NULL);
+
+	adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (self->alert_dialog),
+                                        "delete",
+                                        ADW_RESPONSE_DESTRUCTIVE);
+
+	adw_alert_dialog_set_default_response (ADW_ALERT_DIALOG (self->alert_dialog), "cancel");
+  	adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (self->alert_dialog), "cancel");
+
+}
+
 static void
 stickynote_window_init (StickynoteWindow *self)
 {
@@ -310,4 +373,6 @@ stickynote_window_init (StickynoteWindow *self)
 											);
 
 	stickynote_window_init_notes (self);
+
+	stickynote_init_alert_dialog (self);
 }

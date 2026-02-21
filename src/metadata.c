@@ -378,6 +378,20 @@ metadata_clear(Metadata **metadata)
     g_clear_pointer((void **)metadata, g_free);
 }
 
+gboolean
+metadata_delete_file(Metadata *metadata)
+{
+    g_return_val_if_fail(metadata != NULL && metadata->path != NULL, FALSE);
+
+    if (unlink(metadata->path) < 0)
+    {
+        g_critical("Failed to delete file: %s", metadata->path);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 void
 metadata_get_data(Metadata *metadata, int *color_scheme, gchar const **title, gchar const **timestamp)
 {

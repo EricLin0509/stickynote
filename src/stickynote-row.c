@@ -33,6 +33,7 @@ struct _StickynoteRow {
 
 enum {
     EDIT_REQUEST,
+    DELETE_REQUEST,
     N_SIGNALS
 };
 
@@ -119,13 +120,37 @@ stickynote_row_class_init(StickynoteRowClass *klass)
             NULL,
             G_TYPE_NONE,
             0);
+
+    stickynote_row_signals[DELETE_REQUEST] = g_signal_new ("delete-request",
+            G_TYPE_FROM_CLASS (klass),
+            G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+            0,
+            NULL,
+            NULL,
+            NULL,
+            G_TYPE_NONE,
+            0);
 }
 
+/* A generic signal handler for all actions */
 static void
-stickynote_row_on_edit_clicked (AdwSplitButton *button, StickynoteRow *row)
+stickynote_row_emit_signal_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
 {
-    g_signal_emit (row, stickynote_row_signals[EDIT_REQUEST], 0);
+    StickynoteRow *row = STICKYNOTE_ROW (user_data);
+    const char *action_name = g_action_get_name (G_ACTION (action));
+
+    if (memcmp (action_name, "edit", 4) == 0)
+        g_signal_emit (row, stickynote_row_signals[EDIT_REQUEST], 0);
+    else if (memcmp (action_name, "delete", 6) == 0)
+        g_signal_emit (row, stickynote_row_signals[DELETE_REQUEST], 0);
 }
+
+static const GActionEntry actions[] = {
+    { "edit", stickynote_row_emit_signal_action },
+    { "delete", stickynote_row_emit_signal_action },
+};
 
 static void
 stickynote_row_init(StickynoteRow *self)
@@ -134,7 +159,9 @@ stickynote_row_init(StickynoteRow *self)
 
     self->last_color_scheme = -1; // initialize to invalid color scheme
 
-    g_signal_connect (self->edit_button, "clicked", G_CALLBACK (stickynote_row_on_edit_clicked), self);
+    GSimpleActionGroup *action_group = g_simple_action_group_new ();
+    g_action_map_add_action_entries (G_ACTION_MAP (action_group), actions, G_N_ELEMENTS (actions), self);
+    gtk_widget_insert_action_group (GTK_WIDGET (self), "row", G_ACTION_GROUP (action_group));
 }
 
 GtkWidget *

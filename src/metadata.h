@@ -45,6 +45,14 @@ metadata_build_file_name(Metadata *metadata);
 void
 metadata_clear(Metadata **metadata);
 
+/* Delete the metadata file */
+/*
+  * @warning This function will not clear the memory of the metadata object,
+  *          you should call `metadata_clear` to free the memory
+*/
+gboolean
+metadata_delete_file(Metadata *metadata);
+
 /* Get the content offset of the metadata file */
 int
 metadata_get_content_offset(Metadata *metadata);

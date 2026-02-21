@@ -9,7 +9,17 @@
       <object class="AdwSplitButton" id="edit_button">
         <property name="valign">center</property>
         <property name="icon-name">edit-note-symbolic</property>
+        <property name="menu-model">options_menu</property>
+        <property name="action-name">row.edit</property>
       </object>
     </child>
   </template>
+  <menu id="options_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Delete</attribute>
+        <attribute name="action">row.delete</attribute>
+      </item>
+    </section>
+  </menu>
 </interface>
