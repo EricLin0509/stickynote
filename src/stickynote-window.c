@@ -52,14 +52,21 @@ struct _StickynoteWindow
 
 G_DEFINE_FINAL_TYPE (StickynoteWindow, stickynote_window, ADW_TYPE_APPLICATION_WINDOW)
 
-enum {
-	SHOULD_HIDE,
-	N_SIGNALS
-};
-
-static guint signals[N_SIGNALS] = {0};
-
 /* GObject essential methods */
+
+static void
+stickynote_window_notify_should_hide (StickynoteWindow *self)
+{
+	if (self->editor_window_num > 0) // If there are still editor windows opened, set `hide_on_close` to TRUE
+	{
+		gtk_window_set_hide_on_close (GTK_WINDOW (self), TRUE);
+		return;
+	}
+
+	// If there are no editor windows opened, set `hide_on_close` to FALSE and present the window.
+	gtk_window_set_hide_on_close (GTK_WINDOW (self), FALSE);
+	gtk_window_present (GTK_WINDOW (self));
+}
 
 static void
 stickynote_window_show_note_status (StickynoteWindow *self)
@@ -203,7 +210,7 @@ on_editor_window_closed (StickynoteEditorWindow *self, GtkWidget *widget)
 	if (window == NULL) return TRUE; // Don't close the window if it's not a stickynote window.
 
 	window->editor_window_num--;
-	g_signal_emit (window, signals[SHOULD_HIDE], 0); // Notify the window that the editor window is closed.
+	stickynote_window_notify_should_hide (window); // Notify the window that the editor window is closed.
 
 	return FALSE;
 }
@@ -234,7 +241,7 @@ stickynote_window_open_note (StickynoteWindow *self, gpointer user_data)
 			g_object_set_data (G_OBJECT (action_widget), EDITOR_WINDOW_NAME, editor_window); // Only set the editor window data if the action_widget is a row.
 
 		self->editor_window_num++;
-		g_signal_emit (self, signals[SHOULD_HIDE], 0); // Notify the window that a new editor window is opened.
+		stickynote_window_notify_should_hide (self); // Notify the window that a new editor window is opened.
 	}
 	
 	gtk_window_present (GTK_WINDOW (editor_window));
@@ -266,16 +273,6 @@ stickynote_window_class_init (StickynoteWindowClass *klass)
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, new_button);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, status_page);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteWindow, list_box);
-
-	signals[SHOULD_HIDE] = g_signal_new ("should-hide",
-		G_TYPE_FROM_CLASS (klass),
-		G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
-		0,
-		NULL,
-		NULL,
-		NULL,
-		G_TYPE_NONE,
-		0);
 }
 
 static void
@@ -337,25 +334,9 @@ stickynote_init_alert_dialog (StickynoteWindow *self)
 }
 
 static void
-stickynote_window_should_close_cb (StickynoteWindow *self, gpointer user_data)
-{
-	if (self->editor_window_num > 0) // If there are still editor windows opened, set `hide_on_close` to TRUE
-	{
-		gtk_window_set_hide_on_close (GTK_WINDOW (self), TRUE);
-		return;
-	}
-
-	// If there are no editor windows opened, set `hide_on_close` to FALSE and present the window.
-	gtk_window_set_hide_on_close (GTK_WINDOW (self), FALSE);
-	gtk_window_present (GTK_WINDOW (self));
-}
-
-static void
 stickynote_window_init (StickynoteWindow *self)
 {
 	gtk_widget_init_template (GTK_WIDGET (self));
-
-	g_signal_connect (self, "should-hide", G_CALLBACK (stickynote_window_should_close_cb), NULL);
 
 	gtk_list_box_set_sort_func (self->list_box, gtk_listbox_sort_func, NULL, NULL);
 
