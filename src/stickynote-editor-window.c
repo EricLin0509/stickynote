@@ -48,6 +48,7 @@ struct _StickynoteEditorWindow
 
 	/* Private */
 	int last_color_scheme_index;
+	gboolean has_unsaved_changes;
 	GHashTable *signal_ids;
 	Metadata *metadata;
 };
@@ -98,6 +99,7 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
 	metadata_update (self->metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
 	if (!save_metadata_to_file (self->metadata, content)) return; // If failed to save, return
 
+	self->has_unsaved_changes = FALSE; // Mark the file as saved
 	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata);
 }
 
@@ -110,6 +112,8 @@ on_emoji_picked_cb (StickynoteEditorWindow *self, const gchar *emoji, GtkEmojiCh
 static void
 on_changed_cb (StickynoteEditorWindow *self, GtkTextBuffer *buffer)
 {
+	self->has_unsaved_changes = TRUE;
+
 	const gint total_chars = gtk_text_buffer_get_char_count (buffer);
 
 	g_autofree gchar *char_count_label_text = g_strdup_printf ("Characters %d", total_chars);
@@ -170,9 +174,10 @@ on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, Stickyn
 	}
 
 	gtk_widget_remove_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[editor_window->last_color_scheme_index]); // Remove the last color scheme class
-	editor_window->last_color_scheme_index = color_scheme_index; // Update the last color scheme index
-
 	gtk_widget_add_css_class (GTK_WIDGET (editor_window), stickynote_color_scheme[color_scheme_index]); // Then add the selected color scheme class
+
+	editor_window->last_color_scheme_index = color_scheme_index; // Update the last color scheme index
+	editor_window->has_unsaved_changes = TRUE; // Mark the file as unsaved
 }
 
 static void
@@ -181,6 +186,8 @@ file_saved_action (GSimpleAction *action,
                                 gpointer       user_data)
 {
 	StickynoteEditorWindow *self = user_data;
+
+	if (!self->has_unsaved_changes) return; // If there's no changes, return
 
 	const gchar *title = NULL;
 	metadata_get_data (self->metadata, NULL, &title, NULL);
@@ -306,6 +313,7 @@ stickynote_editor_window_new (GApplication *app, Metadata *data)
 	gtk_widget_add_css_class (GTK_WIDGET (self), stickynote_color_scheme[color_scheme]);
 
 	self->last_color_scheme_index = color_scheme;
+	self->has_unsaved_changes = FALSE;
 
 	return self;
 }
