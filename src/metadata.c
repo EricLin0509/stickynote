@@ -39,6 +39,20 @@
 #define TITLE_PARSED_MASK 0x02
 #define COLOR_SCHEME_PARSED_MASK 0x04
 
+struct _Metadata {
+    GObject parent_instance;
+
+    const char *timestamp;
+    const char *path;
+    const char *title;
+    int color_scheme;
+    int content_offset; // The offset of the user content in the file
+
+    void *user_data;
+};
+
+G_DEFINE_FINAL_TYPE(Metadata, metadata, G_TYPE_OBJECT);
+
 typedef enum {
     STATE_START,
     STATE_METADATA,
@@ -47,16 +61,6 @@ typedef enum {
     STATE_METADATA_COLOR_SCHEME,
     STATE_END
 } ParserState;
-
-typedef struct Metadata {
-    const char *timestamp;
-    const char *path;
-    const char *title;
-    int color_scheme;
-    int content_offset; // The offset of the user content in the file
-
-    void *user_data;
-} Metadata;
 
 typedef struct ParserContext {
     Metadata *metadata;
@@ -260,31 +264,6 @@ parse_metadata(ParserContext *context, const char *path)
     return TRUE;
 }
 
-Metadata *
-metadata_new(const gchar *path)
-{
-    Metadata *metadata = g_new0(Metadata, 1);
-
-    metadata->color_scheme = -1;
-
-    if (path == NULL) return metadata; // Return empty metadata if path is NULL
-
-    /* If path is not NULL, parse metadata */
-    ParserContext context = {
-        .metadata = metadata,
-        .parsed_mask = 0,
-        .state = STATE_START
-    };
-
-    if (!parse_metadata(&context, path))
-    {
-        g_critical("Failed to parse metadata");
-        metadata_clear(&metadata);
-    }
-
-    return metadata;
-}
-
 gchar *
 metadata_build_file_name(Metadata *metadata)
 {
@@ -371,17 +350,6 @@ metadata_load_direct(Metadata *metadata, GtkTextBuffer *buffer)
 
     munmap(file_content, file_size);
     close(file_fd);
-}
-
-void
-metadata_clear(Metadata **metadata)
-{
-    g_return_if_fail(metadata != NULL && *metadata != NULL);
-
-    g_clear_pointer((void **)(&(*metadata)->path), g_free);
-    g_clear_pointer((void **)(&(*metadata)->timestamp), g_free);
-    g_clear_pointer((void **)(&(*metadata)->title), g_free);
-    g_clear_pointer((void **)metadata, g_free);
 }
 
 gboolean
@@ -507,4 +475,61 @@ metadata_get_user_data(Metadata *metadata)
     g_return_val_if_fail(metadata != NULL, NULL);
 
     return metadata->user_data;
+}
+
+/* ==== GObject initialization methods ==== */
+
+static void
+metadata_dispose(GObject *object)
+{
+    Metadata *metadata = META_DATA(object);
+
+    g_clear_pointer((void **)(&(metadata)->path), g_free);
+    g_clear_pointer((void **)(&(metadata)->timestamp), g_free);
+    g_clear_pointer((void **)(&(metadata)->title), g_free);
+
+    G_OBJECT_CLASS (metadata_parent_class)->dispose (object);
+}
+
+static void
+metadata_class_init(MetadataClass *klass)
+{
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+
+    object_class->dispose = metadata_dispose;
+}
+
+static void
+metadata_init(Metadata *metadata)
+{
+    metadata->color_scheme = -1;
+    metadata->path = NULL;
+    metadata->timestamp = NULL;
+    metadata->title = NULL;
+    metadata->content_offset = 0;
+    metadata->user_data = NULL;
+}
+
+Metadata *
+metadata_new(const gchar *path)
+{
+    Metadata *metadata = g_object_new(TYPE_METADATA, NULL);
+
+    if (path == NULL) return metadata; // Return empty metadata if path is NULL
+
+    /* If path is not NULL, parse metadata */
+    ParserContext context = {
+        .metadata = metadata,
+        .parsed_mask = 0,
+        .state = STATE_START
+    };
+
+    if (!parse_metadata(&context, path))
+    {
+        g_critical("Failed to parse metadata");
+        g_object_unref(metadata);
+        return NULL;
+    }
+
+    return metadata;
 }

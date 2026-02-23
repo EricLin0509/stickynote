@@ -26,7 +26,11 @@
 #include <glib.h>
 #include <gtk/gtk.h>
 
-typedef struct Metadata Metadata;
+G_BEGIN_DECLS
+
+#define TYPE_METADATA (metadata_get_type())
+
+G_DECLARE_FINAL_TYPE(Metadata, metadata, META, DATA, GObject)
 
 /* Create a new metadata object from a file path */
 /*
@@ -40,10 +44,6 @@ metadata_new(const gchar *path);
 /* Build a file name */
 gchar *
 metadata_build_file_name(Metadata *metadata);
-
-/* Free the memory of a metadata object */
-void
-metadata_clear(Metadata **metadata);
 
 /* Delete the metadata file */
 /*
@@ -114,5 +114,7 @@ metadata_add_user_data(Metadata *metadata, void *data);
 /* Get user data from the metadata object */
 void *
 metadata_get_user_data(Metadata *metadata);
+
+G_END_DECLS
 
 #endif /* METADATA_H */

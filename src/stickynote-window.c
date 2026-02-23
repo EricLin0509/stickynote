@@ -399,16 +399,6 @@ stickynote_window_class_init (StickynoteWindowClass *klass)
 }
 
 static void
-clear_hash_table_element (gpointer data)
-{
-	Metadata *metadata = data;
-
-	if (metadata == NULL) return;
-
-	metadata_clear (&metadata);
-}
-
-static void
 stickynote_window_init_notes (StickynoteWindow *self)
 {
 	gboolean is_valid_dir;
@@ -469,8 +459,7 @@ stickynote_window_init (StickynoteWindow *self)
 											g_direct_hash,
 											g_direct_equal,
 											NULL,
-											(GDestroyNotify) clear_hash_table_element
-											);
+											(GDestroyNotify) g_object_unref);
 
 	stickynote_window_init_notes (self);
 
