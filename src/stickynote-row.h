@@ -47,6 +47,12 @@ stickynote_row_set_subtitle (StickynoteRow *row, const char *subtitle);
 void
 stickynote_row_update_color_scheme (StickynoteRow *row, int color_scheme);
 
+void
+stickynote_row_disable_menu (StickynoteRow *row);
+
+void
+stickynote_row_enable_menu (StickynoteRow *row);
+
 G_END_DECLS
 
 #endif /* STICKYNOTE_ROW_H */

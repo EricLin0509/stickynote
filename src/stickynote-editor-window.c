@@ -187,17 +187,17 @@ file_saved_action (GSimpleAction *action,
 {
 	StickynoteEditorWindow *self = user_data;
 
-	if (!self->has_unsaved_changes) return; // If there's no changes, return
-
 	const gchar *title = NULL;
 	metadata_get_data (self->metadata, NULL, &title, NULL);
 
-	if (title == NULL)
+	if (title == NULL || *title == '\0')
 	{
 		if (adw_navigation_view_get_visible_page (self->navigation_view) == self->editor_page) // Only push the set title page if the current page is the editor page
 			adw_navigation_view_push (self->navigation_view, self->set_title_page); // If the title is empty, push the set title page
 		return;
 	}
+
+	if (!self->has_unsaved_changes) return; // If there's no changes, return
 
 	emit_file_saved_signal (self);
 }
@@ -216,9 +216,6 @@ stickynote_editor_window_dispose (GObject *object)
 	GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
 
 	g_clear_pointer (&navigation_view, gtk_widget_unparent);
-
-	if (metadata_get_path (self->metadata) == NULL)
-		metadata_clear (&self->metadata); // Only clear the metadata if the file isn't exist
 
 	G_OBJECT_CLASS (stickynote_editor_window_parent_class)->dispose (object);
 }
@@ -296,13 +293,12 @@ stickynote_editor_window_new (GApplication *app, Metadata *data)
 
 	metadata_get_data (data, &color_scheme, &title, NULL);
 
-	adw_navigation_page_set_title (self->editor_page, title ? title : gettext("Untitled"));
+	adw_navigation_page_set_title (self->editor_page, (title && *title) ? title : gettext("Untitled"));
 
 	if (color_scheme == -1) // If no color scheme define, use random color
 	{
 		int random_number = g_random_int_range (0, COLOR_SCHEME_COUNT * 6); // Multiply by 6 to get a better ramdom distribution
 		color_scheme = random_number % COLOR_SCHEME_COUNT;
-		metadata_update(data, color_scheme, NULL, FALSE);
 	}
 
 	if (metadata_get_content_offset (data) > 0)

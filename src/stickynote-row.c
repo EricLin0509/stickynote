@@ -27,6 +27,7 @@ struct _StickynoteRow {
     GtkWidget parent_instance;
 
     AdwSplitButton *edit_button;
+    GMenuModel *options_menu;
 
     gint last_color_scheme;
 };
@@ -88,6 +89,22 @@ stickynote_row_update_color_scheme (StickynoteRow *row, int color_scheme)
     row->last_color_scheme = color_scheme;
 }
 
+void
+stickynote_row_disable_menu (StickynoteRow *row)
+{
+    g_return_if_fail (STICKYNOTE_IS_ROW (row));
+
+    adw_split_button_set_menu_model (row->edit_button, NULL);
+}
+
+void
+stickynote_row_enable_menu (StickynoteRow *row)
+{
+    g_return_if_fail (STICKYNOTE_IS_ROW (row));
+
+    adw_split_button_set_menu_model (row->edit_button, row->options_menu);
+}
+
 static void
 stickynote_row_dispose (GObject *object)
 {
@@ -110,6 +127,7 @@ stickynote_row_class_init(StickynoteRowClass *klass)
 
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-row.ui");
     gtk_widget_class_bind_template_child (widget_class, StickynoteRow, edit_button);
+    gtk_widget_class_bind_template_child (widget_class, StickynoteRow, options_menu);
 
     stickynote_row_signals[EDIT_REQUEST] = g_signal_new ("edit-request",
             G_TYPE_FROM_CLASS (klass),

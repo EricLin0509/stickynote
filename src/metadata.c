@@ -83,6 +83,18 @@ get_file_size(int file_fd)
     return file_stat.st_size;
 }
 
+static void
+skip_line(char **line)
+{
+    char *line_end = strchr(*line, '\n');
+    if (line_end == NULL) // If no newline, set state to end
+    {
+        *line += strlen(*line);
+        return;
+    }
+    else *line = line_end + 1; // Skip the line
+}
+
 /* Handle `STATE_START` state */
 static void
 handle_state_start(ParserContext *context, char **line)
@@ -95,7 +107,7 @@ handle_state_start(ParserContext *context, char **line)
     }
 
     g_warning ("Unexpected line: %s", *line);
-    context->state = STATE_END;
+    skip_line(line);
 }
 
 /* Handle `STATE_METADATA` state */
@@ -127,13 +139,7 @@ handle_state_metadata(ParserContext *context, char **line)
         return;
     }
 
-    char *line_end = strchr(*line, '\n');
-    if (line_end == NULL) // If no newline, set state to end
-    {
-        *line += strlen(*line);
-        return;
-    }
-    else *line = line_end + 1; // Skip the line
+    skip_line(line); // Skip the line if it is not match any metadata keyword
 }
 
 /* Handle `STATE_METADATA_TIMESTAMP` state */
@@ -245,7 +251,7 @@ parse_metadata(ParserContext *context, const char *path)
     munmap(file_content, file_size);
     close(file_fd);
 
-    if (context->state != STATE_END) // If the end of file is not reached, there is an error
+    if (context->state != STATE_END) // If the parser didn't reach the STATE_END state, it means there is an error
     {
         g_critical("Unexpected end of file");
         return FALSE;
