@@ -21,7 +21,6 @@
 #include <glib/gi18n.h>
 
 #include "config.h"
-#include "note-dir.h"
 
 #define COLOR_SCHEME_IMPLEMENTATION /* For One file header */
 #include "color-scheme.h"
@@ -64,28 +63,6 @@ static guint stickynote_editor_window_signals[N_SIGNALS];
 
 /* GObject essential methods */
 
-static gboolean
-save_metadata_to_file (Metadata *data, const gchar *content)
-{
-	if (metadata_get_path (data) == NULL)
-	{
-		gboolean is_valid_dir;
-		g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
-		if (notes_dir == NULL || !is_valid_dir) return FALSE;
-		g_autofree gchar *file_name = metadata_build_file_name (data);
-		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
-		metadata_set_path (data, path);
-	}
-
-	if (!metadata_save (data, content))
-	{
-		g_critical ("Failed to save file");
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 static void
 emit_file_saved_signal (StickynoteEditorWindow *self)
 {
@@ -97,10 +74,9 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
 	gchar *content = gtk_text_buffer_get_text (self->text_buffer, &start, &end, FALSE);
 
 	metadata_update (self->metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
-	if (!save_metadata_to_file (self->metadata, content)) return; // If failed to save, return
 
 	self->has_unsaved_changes = FALSE; // Mark the file as saved
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata);
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata, content);
 }
 
 static void
@@ -211,8 +187,6 @@ stickynote_editor_window_dispose (GObject *object)
 {
 	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
 
-	stickynote_editor_window_disconnect_all_signals (self);
-
 	GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
 
 	g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -229,7 +203,7 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-saved",
+	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-save",
             G_TYPE_FROM_CLASS (klass),
             G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
             0,
@@ -237,8 +211,9 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             NULL,
             NULL,
             G_TYPE_NONE,
-            1,
-            G_TYPE_POINTER); // The metadata pointer
+            2,
+            G_TYPE_POINTER, // The metadata pointer
+			G_TYPE_POINTER); // The content pointer
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-editor-window.ui");
 	gtk_widget_class_bind_template_callback (widget_class, on_emoji_picked_cb);
@@ -319,7 +294,7 @@ stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback 
 {
 	StickynoteEditorWindow *self = stickynote_editor_window_new (app, data);
 
-	stickynote_editor_window_connect_signal (self, "file-saved", file_save_signal_handler, user_data);
+	stickynote_editor_window_connect_signal (self, "file-save", file_save_signal_handler, user_data);
 
 	return self;
 }

@@ -27,7 +27,6 @@
 G_BEGIN_DECLS
 
 #define STICKYNOTE_TYPE_EDITOR_WINDOW (stickynote_editor_window_get_type())
-#define STICKYNOTE_EDITOR_WINDOW_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), STICKYNOTE_TYPE_EDITOR_WINDOW, StickynoteEditorWindowClass))
 
 G_DECLARE_FINAL_TYPE (StickynoteEditorWindow, stickynote_editor_window, STICKYNOTE, EDITOR_WINDOW, AdwApplicationWindow)
 

@@ -19,9 +19,9 @@
  */
 
 #include <glib/gi18n.h>
+#include <sys/stat.h>
 
 #include "config.h"
-#include "note-dir.h"
 
 #include "stickynote-row.h"
 #include "stickynote-window.h"
@@ -87,6 +87,84 @@ stickynote_window_show_note_status (StickynoteWindow *self)
 		g_autofree gchar *description = g_strdup_printf (gettext ("%zu note%s in total"), self->note_num, should_include_plural);
 		adw_status_page_set_description (self->status_page, description);
 	}
+}
+
+static inline gboolean
+ensure_directories_exist (const gchar *dir_path)
+{
+	struct stat st;
+
+	if (stat (dir_path, &st) == 0)
+	{
+		if (S_ISDIR (st.st_mode)) return TRUE; // Directory exists
+		else // If the path exists but is not a directory
+		{
+			g_critical ("%s is not a directory", dir_path);
+			return FALSE;
+		}
+	}
+
+	g_warning ("Directory %s does not exist, creating...", dir_path);
+
+	g_mkdir_with_parents (dir_path, 0755);
+
+	return TRUE;
+}
+
+static char *
+get_note_dir_realpath (gboolean *is_directory)
+{
+	gboolean is_valid_dir, *is_valid_dir_ptr;
+	is_valid_dir_ptr = is_directory ? is_directory : &is_valid_dir; // If is_directory is NULL, we will allocate memory for it.
+
+	GSettings *setting = g_settings_new ("com.ericlin.stickynote");
+	g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
+	g_autofree gchar *realpath = NULL;
+
+	if (strstr (notes_dir, "../") != NULL) // Check if the path is not a treverse path
+	{
+		g_critical ("Treverse path is not allowed: %s", notes_dir);
+		return NULL;
+	}
+
+	if (memcmp (notes_dir, "~/", 2) == 0)
+	{
+		realpath = g_build_filename (g_get_home_dir (), notes_dir + 2, NULL);
+	}
+	else if (memcmp (notes_dir, "/", 1) == 0)
+	{
+		realpath = g_build_filename (notes_dir, NULL);
+	}
+	else
+	{
+		realpath = g_build_filename (g_get_current_dir (), notes_dir, NULL);
+	}
+
+	*is_valid_dir_ptr = ensure_directories_exist (realpath);
+
+	return g_steal_pointer (&realpath);
+}
+
+static gboolean
+save_metadata_to_file (Metadata *data, const gchar *content)
+{
+	if (metadata_get_path (data) == NULL)
+	{
+		gboolean is_valid_dir;
+		g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
+		if (notes_dir == NULL || !is_valid_dir) return FALSE;
+		g_autofree gchar *file_name = metadata_build_file_name (data);
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		metadata_set_path (data, path);
+	}
+
+	if (!metadata_save (data, content))
+	{
+		g_critical ("Failed to save file");
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static int
@@ -212,9 +290,11 @@ gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data, GtkWidget **ro
 }
 
 static void
-on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, StickynoteWindow *self)
+on_stickynote_saved (StickynoteEditorWindow *editor_window, Metadata *data, const gchar *content, StickynoteWindow *self)
 {
 	if (data == NULL) return;
+
+	if (!save_metadata_to_file (data, content)) return; // Failed to save the file
 
 	GtkWidget *row = NULL;
 	gtk_list_box_update_rows (self, data, &row);
