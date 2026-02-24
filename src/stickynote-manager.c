@@ -152,7 +152,7 @@ stickynote_manager_init_notes (StickynoteManager *self)
 	const gchar *file_name;
 	while ((file_name = g_dir_read_name (dir)) != NULL)
 	{
-		gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
 		Metadata *data = metadata_new (path);
 
 		if (data == NULL) continue; // Ignore invalid files
@@ -186,8 +186,8 @@ on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metada
 
     if (!save_metadata_to_file(metadata, content)) return;
 
-    gchar *path = g_strdup(metadata_get_path(metadata));
-    g_hash_table_replace(manager->metadata_table, path, metadata); // Update the metadata in the manager
+    const gchar *path = metadata_get_path(metadata);
+    g_hash_table_replace(manager->metadata_table, (void *)path, metadata); // Update the metadata in the manager
 
     g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
 }
@@ -326,6 +326,6 @@ stickynote_manager_class_init(StickynoteManagerClass *klass)
 static void
 stickynote_manager_init(StickynoteManager *self)
 {
-    self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
+    self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_object_unref);
 }
 
