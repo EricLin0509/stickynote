@@ -33,7 +33,7 @@ typedef enum {
     STICKYNOTE_MANAGER_MODE_DELETE
 } StickynoteManagerMode;
 
-#define STICKYNOTE_TYPE_MANAGER (sticky_note_manager_get_type ())
+#define STICKYNOTE_TYPE_MANAGER (stickynote_manager_get_type ())
 
 G_DECLARE_FINAL_TYPE (StickynoteManager, stickynote_manager, STICKYNOTE, MANAGER, GObject)
 

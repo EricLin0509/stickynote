@@ -37,9 +37,11 @@ enum {
     N_SIGNALS
 };
 
-static guint signals[N_SIGNALS] = {0};
+static guint manager_signals[N_SIGNALS] = {0};
 
 G_DEFINE_FINAL_TYPE(StickynoteManager, stickynote_manager, G_TYPE_OBJECT)
+
+/* ==== Load and save logics ==== */
 
 static inline gboolean
 ensure_directories_exist (const gchar *dir_path)
@@ -119,6 +121,14 @@ save_metadata_to_file (Metadata *data, const gchar *content)
 	return TRUE;
 }
 
+/* ==== StickynoteManager ==== */
+
+StickynoteManager *
+stickynote_manager_new (void)
+{
+    return g_object_new(STICKYNOTE_TYPE_MANAGER, NULL);
+}
+
 void
 stickynote_manager_init_notes (StickynoteManager *self)
 {
@@ -139,7 +149,7 @@ stickynote_manager_init_notes (StickynoteManager *self)
 
 		if (data == NULL) continue; // Ignore invalid files
 
-        g_signal_emit(self, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_LOAD, data);
+        g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_LOAD, data);
     }
 }
 
@@ -150,7 +160,7 @@ on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metada
 
     if (!save_metadata_to_file(metadata, content)) return;
 
-    g_signal_emit(manager, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
+    g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
 }
 
 static gboolean
@@ -158,28 +168,28 @@ on_stickynote_window_close (StickynoteEditorWindow *window, gpointer user_data)
 {
     Metadata *metadata = stickynote_editor_window_get_metadata(window);
 
-    g_return_val_if_fail(META_IS_DATA(metadata), FALSE);
+    g_return_val_if_fail(META_IS_DATA(metadata), TRUE);
 
     g_object_set_data(G_OBJECT(metadata), "stickynote-editor-window", NULL); // Remove the window from the manager
 
-    return TRUE;
+    if (metadata_get_path(metadata) == NULL) // If the note is not saved, clear the metadata
+        g_clear_object (&metadata);
+
+    return FALSE;
 }
 
 void
 stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
 {
-    g_return_if_fail(STICKYNOTE_IS_MANAGER(self));
+    g_return_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata));
 
-    if (metadata == NULL) 
-        metadata = metadata_new(NULL);
-
-    StickynoteEditorWindow *window = g_object_get_data(G_OBJECT(self), "stickynote-editor-window");
+    StickynoteEditorWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
 
     if (window == NULL)
     {
         window = stickynote_editor_window_new_full(self->app, metadata, G_CALLBACK(on_stickynote_window_save_note), self);
         stickynote_editor_window_connect_signal(window, "close-request", G_CALLBACK(on_stickynote_window_close), NULL);
-        g_object_set_data(G_OBJECT(self), "stickynote-editor-window", window);
+        g_object_set_data(G_OBJECT(metadata), "stickynote-editor-window", window);
     }
     
     gtk_window_present(GTK_WINDOW(window));
@@ -192,7 +202,7 @@ stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const
 
     if (!save_metadata_to_file(metadata, content)) return;
 
-    g_signal_emit(self, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
+    g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
 }
 
 void
@@ -200,9 +210,16 @@ stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
 {
     g_return_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata));
 
+    GtkWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
+    if (GTK_IS_WINDOW(window))
+    {
+        gtk_window_present(window);
+        return;
+    }
+
     if (!metadata_delete_file(metadata)) return;
 
-    g_signal_emit(self, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
+    g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
 }
 
 static void
@@ -223,13 +240,14 @@ stickynote_manager_class_init(StickynoteManagerClass *klass)
 
     object_class->dispose = stickynote_manager_dispose;
 
-    signals[NOTE_CHANGED] = g_signal_new("note-changed",
+    manager_signals[NOTE_CHANGED] = g_signal_new("note-changed",
                                                  G_TYPE_FROM_CLASS(klass),
                                                  G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
                                                  0,
                                                  NULL,
                                                  NULL,
                                                  NULL,
+                                                 G_TYPE_NONE,
                                                  2,
                                                  G_TYPE_INT, // StickynoteManagerMode
                                                  G_TYPE_OBJECT); // The metadata object
