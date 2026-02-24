@@ -308,6 +308,14 @@ stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback 
 	return self;
 }
 
+Metadata *
+stickynote_editor_window_get_metadata (StickynoteEditorWindow *self)
+{
+	g_return_val_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self), NULL);
+
+	return g_weak_ref_get (&self->metadata);
+}
+
 void
 stickynote_editor_window_connect_signal (StickynoteEditorWindow *self, const char *signal_name, GCallback handler_func, gpointer user_data)
 {

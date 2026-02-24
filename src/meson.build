@@ -3,6 +3,7 @@ stickynote_sources = [
   'stickynote-application.c',
   'stickynote-row.c',
   'stickynote-window.c',
+  'stickynote-manager.c',
   'stickynote-editor-window.c',
   'theme-selector.c',
   'metadata.c',

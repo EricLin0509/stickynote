@@ -1,0 +1,243 @@
+/* stickynote-manager.c
+ *
+ * Copyright 2025 EricLin
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+#include <sys/stat.h>
+
+#include "stickynote-manager.h"
+
+#include "stickynote-editor-window.h"
+
+struct _StickynoteManager {
+    AdwBin parent_instance;
+
+    GHashTable *metadata_table;
+
+    GApplication *app;
+};
+
+enum {
+    NOTE_CHANGED,
+    N_SIGNALS
+};
+
+static guint signals[N_SIGNALS] = {0};
+
+G_DEFINE_FINAL_TYPE(StickynoteManager, stickynote_manager, G_TYPE_OBJECT)
+
+static inline gboolean
+ensure_directories_exist (const gchar *dir_path)
+{
+	struct stat st;
+
+	if (stat (dir_path, &st) == 0)
+	{
+		if (S_ISDIR (st.st_mode)) return TRUE; // Directory exists
+		else // If the path exists but is not a directory
+		{
+			g_critical ("%s is not a directory", dir_path);
+			return FALSE;
+		}
+	}
+
+	g_warning ("Directory %s does not exist, creating...", dir_path);
+
+	g_mkdir_with_parents (dir_path, 0755);
+
+	return TRUE;
+}
+
+static char *
+get_note_dir_realpath (gboolean *is_directory)
+{
+	gboolean is_valid_dir, *is_valid_dir_ptr;
+	is_valid_dir_ptr = is_directory ? is_directory : &is_valid_dir; // If is_directory is NULL, we will allocate memory for it.
+
+	GSettings *setting = g_settings_new ("com.ericlin.stickynote");
+	g_autofree gchar *notes_dir = g_settings_get_string (setting, "notes-dir");
+	g_autofree gchar *realpath = NULL;
+
+	if (strstr (notes_dir, "../") != NULL) // Check if the path is not a treverse path
+	{
+		g_critical ("Treverse path is not allowed: %s", notes_dir);
+		return NULL;
+	}
+
+	if (memcmp (notes_dir, "~/", 2) == 0)
+	{
+		realpath = g_build_filename (g_get_home_dir (), notes_dir + 2, NULL);
+	}
+	else if (memcmp (notes_dir, "/", 1) == 0)
+	{
+		realpath = g_build_filename (notes_dir, NULL);
+	}
+	else
+	{
+		realpath = g_build_filename (g_get_current_dir (), notes_dir, NULL);
+	}
+
+	*is_valid_dir_ptr = ensure_directories_exist (realpath);
+
+	return g_steal_pointer (&realpath);
+}
+
+static gboolean
+save_metadata_to_file (Metadata *data, const gchar *content)
+{
+	if (metadata_get_path (data) == NULL)
+	{
+		gboolean is_valid_dir;
+		g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
+		if (notes_dir == NULL || !is_valid_dir) return FALSE;
+		g_autofree gchar *file_name = metadata_build_file_name (data);
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		metadata_set_path (data, path);
+	}
+
+	if (!metadata_save (data, content))
+	{
+		g_critical ("Failed to save file");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+void
+stickynote_manager_init_notes (StickynoteManager *self)
+{
+    g_return_if_fail(STICKYNOTE_IS_MANAGER(self));
+
+	gboolean is_valid_dir;
+	g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
+	if (notes_dir == NULL || !is_valid_dir) return;
+
+	GDir *dir = g_dir_open (notes_dir, 0, NULL);
+	if (dir == NULL) return;
+
+	const gchar *file_name;
+	while ((file_name = g_dir_read_name (dir)) != NULL)
+	{
+		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		Metadata *data = metadata_new (path);
+
+		if (data == NULL) continue; // Ignore invalid files
+
+        g_signal_emit(self, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_LOAD, data);
+    }
+}
+
+static void
+on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metadata, const gchar *content, gpointer user_data)
+{
+    StickynoteManager *manager = STICKYNOTE_MANAGER(user_data);
+
+    if (!save_metadata_to_file(metadata, content)) return;
+
+    g_signal_emit(manager, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
+}
+
+static gboolean
+on_stickynote_window_close (StickynoteEditorWindow *window, gpointer user_data)
+{
+    Metadata *metadata = stickynote_editor_window_get_metadata(window);
+
+    g_return_val_if_fail(META_IS_DATA(metadata), FALSE);
+
+    g_object_set_data(G_OBJECT(metadata), "stickynote-editor-window", NULL); // Remove the window from the manager
+
+    return TRUE;
+}
+
+void
+stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
+{
+    g_return_if_fail(STICKYNOTE_IS_MANAGER(self));
+
+    if (metadata == NULL) 
+        metadata = metadata_new(NULL);
+
+    StickynoteEditorWindow *window = g_object_get_data(G_OBJECT(self), "stickynote-editor-window");
+
+    if (window == NULL)
+    {
+        window = stickynote_editor_window_new_full(self->app, metadata, G_CALLBACK(on_stickynote_window_save_note), self);
+        stickynote_editor_window_connect_signal(window, "close-request", G_CALLBACK(on_stickynote_window_close), NULL);
+        g_object_set_data(G_OBJECT(self), "stickynote-editor-window", window);
+    }
+    
+    gtk_window_present(GTK_WINDOW(window));
+}
+
+void
+stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const gchar *content)
+{
+    g_return_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata));
+
+    if (!save_metadata_to_file(metadata, content)) return;
+
+    g_signal_emit(self, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
+}
+
+void
+stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
+{
+    g_return_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata));
+
+    if (!metadata_delete_file(metadata)) return;
+
+    g_signal_emit(self, signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
+}
+
+static void
+stickynote_manager_dispose(GObject *object)
+{
+    StickynoteManager *self = STICKYNOTE_MANAGER(object);
+
+    g_hash_table_remove_all(self->metadata_table);
+    g_clear_pointer(&self->metadata_table, g_hash_table_unref);
+
+    G_OBJECT_CLASS(stickynote_manager_parent_class)->dispose(object);
+}
+
+static void
+stickynote_manager_class_init(StickynoteManagerClass *klass)
+{
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+
+    object_class->dispose = stickynote_manager_dispose;
+
+    signals[NOTE_CHANGED] = g_signal_new("note-changed",
+                                                 G_TYPE_FROM_CLASS(klass),
+                                                 G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+                                                 0,
+                                                 NULL,
+                                                 NULL,
+                                                 NULL,
+                                                 2,
+                                                 G_TYPE_INT, // StickynoteManagerMode
+                                                 G_TYPE_OBJECT); // The metadata object
+}
+
+static void
+stickynote_manager_init(StickynoteManager *self)
+{
+    self->app = g_application_get_default();
+}
+

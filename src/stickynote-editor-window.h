@@ -59,6 +59,10 @@ stickynote_editor_window_new (GApplication *app, Metadata *data);
 StickynoteEditorWindow *
 stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback file_save_signal_handler, gpointer user_data);
 
+/* Get the metadata of the editor window */
+Metadata *
+stickynote_editor_window_get_metadata (StickynoteEditorWindow *self);
+
 /* Connects a signal to the editor window */
 /*
   * @param self
