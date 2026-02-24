@@ -143,7 +143,7 @@ gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 		date_str = g_strdup_printf (TIME_STRING_FORMAT, year, month, day, hour, minute, second); // Convert the timestamp to a string
 	}
 
-	GtkWidget *row = metadata_get_user_data (data);
+	GtkWidget *row = g_object_get_data (G_OBJECT (data), "row");
 
 	if (row == NULL) // A new note is added
 	{

@@ -47,8 +47,6 @@ struct _Metadata {
     const char *title;
     int color_scheme;
     int content_offset; // The offset of the user content in the file
-
-    void *user_data;
 };
 
 G_DEFINE_FINAL_TYPE(Metadata, metadata, G_TYPE_OBJECT);
@@ -461,22 +459,6 @@ metadata_save(Metadata *metadata, const gchar *content)
     return TRUE;
 }
 
-void
-metadata_add_user_data(Metadata *metadata, void *data)
-{
-    g_return_if_fail(metadata != NULL);
-
-    metadata->user_data = data;
-}
-
-void *
-metadata_get_user_data(Metadata *metadata)
-{
-    g_return_val_if_fail(metadata != NULL, NULL);
-
-    return metadata->user_data;
-}
-
 /* ==== GObject initialization methods ==== */
 
 static void
@@ -507,7 +489,6 @@ metadata_init(Metadata *metadata)
     metadata->timestamp = NULL;
     metadata->title = NULL;
     metadata->content_offset = 0;
-    metadata->user_data = NULL;
 }
 
 Metadata *

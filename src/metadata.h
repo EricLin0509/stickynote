@@ -107,14 +107,6 @@ metadata_update(Metadata *metadata, int color_scheme, const gchar *title, gboole
 gboolean
 metadata_save(Metadata *metadata, const gchar *content);
 
-/* Add user data to the metadata object */
-void
-metadata_add_user_data(Metadata *metadata, void *data);
-
-/* Get user data from the metadata object */
-void *
-metadata_get_user_data(Metadata *metadata);
-
 G_END_DECLS
 
 #endif /* METADATA_H */
