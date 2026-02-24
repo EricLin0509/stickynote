@@ -49,7 +49,7 @@ struct _StickynoteEditorWindow
 	int last_color_scheme_index;
 	gboolean has_unsaved_changes;
 	GHashTable *signal_ids;
-	Metadata *metadata;
+	GWeakRef metadata; // Weak reference to the metadata object
 };
 
 G_DEFINE_FINAL_TYPE (StickynoteEditorWindow, stickynote_editor_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -68,15 +68,18 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
 
+	Metadata *metadata = g_weak_ref_get (&self->metadata);
+	g_return_if_fail (META_IS_DATA (metadata));
+
   	GtkTextIter start;
   	GtkTextIter end;
 	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
 	gchar *content = gtk_text_buffer_get_text (self->text_buffer, &start, &end, FALSE);
 
-	metadata_update (self->metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
+	metadata_update (metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
 
 	self->has_unsaved_changes = FALSE; // Mark the file as saved
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, self->metadata, content);
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, metadata, content);
 }
 
 static void
@@ -131,7 +134,10 @@ on_title_apply (StickynoteEditorWindow *self, GtkButton *button)
 {
 	const char *title = gtk_editable_get_text (GTK_EDITABLE (self->title_entry));
 
-	metadata_update (self->metadata, -1, title, FALSE);
+	Metadata *metadata = g_weak_ref_get (&self->metadata);
+	g_return_if_fail (META_IS_DATA (metadata));
+
+	metadata_update (metadata, -1, title, FALSE);
 
 	adw_navigation_view_pop (self->navigation_view);
 
@@ -163,8 +169,11 @@ file_saved_action (GSimpleAction *action,
 {
 	StickynoteEditorWindow *self = user_data;
 
+	Metadata *metadata = g_weak_ref_get (&self->metadata);
+	g_return_if_fail (META_IS_DATA (metadata));
+
 	const gchar *title = NULL;
-	metadata_get_data (self->metadata, NULL, &title, NULL);
+	metadata_get_data (metadata, NULL, &title, NULL);
 
 	if (title == NULL || *title == '\0')
 	{
@@ -261,7 +270,7 @@ stickynote_editor_window_new (GApplication *app, Metadata *data)
 	g_return_val_if_fail (data != NULL && data != NULL, NULL);
 
 	StickynoteEditorWindow *self = g_object_new (STICKYNOTE_TYPE_EDITOR_WINDOW, "application", app, NULL);
-	self->metadata = data;
+	g_weak_ref_init (&self->metadata, data);
 
 	const char *title = NULL;
 	int color_scheme = -1;
