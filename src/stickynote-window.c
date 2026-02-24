@@ -23,8 +23,6 @@
 
 #include "config.h"
 
-#include "stickynote-manager.h"
-
 #include "stickynote-row.h"
 #include "stickynote-window.h"
 
@@ -47,7 +45,7 @@ struct _StickynoteWindow
 
 	/* Private */
 	AdwDialog *alert_dialog;
-	StickynoteManager *manager;
+	GWeakRef manager;
 	size_t note_num;
 	size_t editor_window_num; // If this number is greater than 0, it means that the app is in the process of creating a new note.
 	guint note_changed_id;
@@ -110,8 +108,11 @@ stickynote_window_alert_choice (AdwAlertDialog *dialog, GAsyncResult *result, gp
 
 	if (memcmp (choice, "cancel", 6) == 0) return; // User clicked 'Cancel'
 
+	StickynoteManager *manager = g_weak_ref_get (&window->manager);
+	g_return_if_fail (STICKYNOTE_IS_MANAGER (manager));
+
 	Metadata *data = g_object_get_data (G_OBJECT (row), "metadata");
-	stickynote_manager_delete_note (window->manager, data);
+	stickynote_manager_delete_note (manager, data);
 }
 
 static void
@@ -171,6 +172,8 @@ static void
 stickynote_window_open_note (StickynoteWindow *self, gpointer user_data)
 {
 	GtkWidget *action_widget = user_data;
+	StickynoteManager *manager = g_weak_ref_get (&self->manager);
+	g_return_if_fail (STICKYNOTE_IS_MANAGER (manager));
 	Metadata *data = NULL;
 
 	if (STICKYNOTE_IS_ROW (action_widget)) // User clicked the row, get the metadata from the row.
@@ -180,7 +183,7 @@ stickynote_window_open_note (StickynoteWindow *self, gpointer user_data)
 
 	g_return_if_fail (data != NULL); // Check if the data is valid
 
-	stickynote_manager_edit_note (self->manager, data);
+	stickynote_manager_edit_note (manager, data);
 }
 
 static void
@@ -211,7 +214,9 @@ stickynote_window_dispose (GObject *object)
 {
 	StickynoteWindow *self = STICKYNOTE_WINDOW (object);
 
-	g_signal_handler_disconnect (self->manager, self->note_changed_id);
+	StickynoteManager *manager = g_weak_ref_get (&self->manager);
+	if (STICKYNOTE_IS_MANAGER (manager))
+		g_signal_handler_disconnect (manager, self->note_changed_id);
 
 	g_clear_pointer (&self->toolbar, gtk_widget_unparent);
 
@@ -263,11 +268,21 @@ stickynote_window_init (StickynoteWindow *self)
 
 	gtk_list_box_set_sort_func (self->list_box, gtk_listbox_sort_func, NULL, NULL);
 
-	self->manager = stickynote_manager_new ();
-	self->note_changed_id = g_signal_connect (self->manager, "note-changed", G_CALLBACK (handle_note_manager_changed), self);
-	stickynote_manager_init_notes (self->manager);
-
 	gtk_list_box_invalidate_sort (self->list_box); // Sort the list by timestamp.
 
 	stickynote_init_alert_dialog (self);
+}
+
+GtkWindow *
+stickynote_window_new (GApplication *app, StickynoteManager *manager)
+{
+	g_return_val_if_fail (STICKYNOTE_IS_MANAGER (manager), NULL);
+
+	StickynoteWindow *self = g_object_new (STICKYNOTE_TYPE_WINDOW, "application", app, NULL);
+
+	g_weak_ref_init (&self->manager, manager);
+	self->note_changed_id = g_signal_connect (manager, "note-changed", G_CALLBACK (handle_note_manager_changed), self);
+	stickynote_manager_get_notes (manager);
+
+	return GTK_WINDOW (self);
 }

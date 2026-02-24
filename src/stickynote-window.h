@@ -22,10 +22,15 @@
 
 #include <adwaita.h>
 
+#include "stickynote-manager.h"
+
 G_BEGIN_DECLS
 
 #define STICKYNOTE_TYPE_WINDOW (stickynote_window_get_type())
 
 G_DECLARE_FINAL_TYPE (StickynoteWindow, stickynote_window, STICKYNOTE, WINDOW, AdwApplicationWindow)
+
+GtkWindow *
+stickynote_window_new (GApplication *app, StickynoteManager *manager);
 
 G_END_DECLS

@@ -141,6 +141,14 @@
         <attribute name="label" translatable="yes">Save</attribute>
         <attribute name="action">win.save</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+        <attribute name="action">app.shortcuts</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_About StickyNote</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
     </section>
   </menu>
 </interface>

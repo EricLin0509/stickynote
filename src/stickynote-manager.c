@@ -37,6 +37,13 @@ enum {
     N_SIGNALS
 };
 
+enum {
+    PROP_APP = 1,
+    N_PROPS
+};
+
+static GParamSpec *obj_props[N_PROPS] = {NULL, };
+
 static guint manager_signals[N_SIGNALS] = {0};
 
 G_DEFINE_FINAL_TYPE(StickynoteManager, stickynote_manager, G_TYPE_OBJECT)
@@ -124,11 +131,12 @@ save_metadata_to_file (Metadata *data, const gchar *content)
 /* ==== StickynoteManager ==== */
 
 StickynoteManager *
-stickynote_manager_new (void)
+stickynote_manager_new (GApplication *app)
 {
-    return g_object_new(STICKYNOTE_TYPE_MANAGER, NULL);
+    return g_object_new(STICKYNOTE_TYPE_MANAGER, "app", app, NULL);
 }
 
+/* This function may be use to implement a real-time update of the notes list, but it is not necessary for now. */
 void
 stickynote_manager_init_notes (StickynoteManager *self)
 {
@@ -144,10 +152,28 @@ stickynote_manager_init_notes (StickynoteManager *self)
 	const gchar *file_name;
 	while ((file_name = g_dir_read_name (dir)) != NULL)
 	{
-		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		gchar *path = g_build_filename (notes_dir, file_name, NULL);
 		Metadata *data = metadata_new (path);
 
 		if (data == NULL) continue; // Ignore invalid files
+
+        g_hash_table_insert(self->metadata_table, path, data);
+        g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_LOAD, data);
+    }
+}
+
+void
+stickynote_manager_get_notes (StickynoteManager *self)
+{
+    g_return_if_fail(STICKYNOTE_IS_MANAGER(self));
+
+    GHashTableIter iter;
+    g_hash_table_iter_init(&iter, self->metadata_table);
+    Metadata *data = NULL;
+
+    while (g_hash_table_iter_next(&iter, NULL, (void **)&data))
+    {
+        if (data == NULL) continue; // Ignore invalid files
 
         g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_LOAD, data);
     }
@@ -159,6 +185,9 @@ on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metada
     StickynoteManager *manager = STICKYNOTE_MANAGER(user_data);
 
     if (!save_metadata_to_file(metadata, content)) return;
+
+    gchar *path = g_strdup(metadata_get_path(metadata));
+    g_hash_table_replace(manager->metadata_table, path, metadata); // Update the metadata in the manager
 
     g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
 }
@@ -219,7 +248,43 @@ stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
 
     if (!metadata_delete_file(metadata)) return;
 
+    g_hash_table_remove(self->metadata_table, metadata_get_path(metadata));
+
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
+}
+
+/* ==== GObject ==== */
+
+static void
+stickynote_manager_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+{
+    StickynoteManager *self = STICKYNOTE_MANAGER(object);
+
+    switch (prop_id)
+    {
+        case PROP_APP:
+            self->app = g_value_get_object(value);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+            break;
+    }
+}
+
+static void
+stickynote_manager_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+    StickynoteManager *self = STICKYNOTE_MANAGER(object);
+
+    switch (prop_id)
+    {
+        case PROP_APP:
+            g_value_set_object(value, self->app);
+            break;
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+            break;
+    }
 }
 
 static void
@@ -240,6 +305,11 @@ stickynote_manager_class_init(StickynoteManagerClass *klass)
 
     object_class->dispose = stickynote_manager_dispose;
 
+    object_class->set_property = stickynote_manager_set_property;
+    object_class->get_property = stickynote_manager_get_property;
+    obj_props[PROP_APP] = g_param_spec_object("app", NULL, NULL, G_TYPE_APPLICATION, G_PARAM_READWRITE);
+    g_object_class_install_properties(object_class, N_PROPS, obj_props);
+
     manager_signals[NOTE_CHANGED] = g_signal_new("note-changed",
                                                  G_TYPE_FROM_CLASS(klass),
                                                  G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
@@ -256,6 +326,6 @@ stickynote_manager_class_init(StickynoteManagerClass *klass)
 static void
 stickynote_manager_init(StickynoteManager *self)
 {
-    self->app = g_application_get_default();
+    self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
 }
 

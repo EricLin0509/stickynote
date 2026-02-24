@@ -28,6 +28,8 @@
 struct _StickynoteApplication
 {
 	AdwApplication parent_instance;
+
+	StickynoteManager *manager;
 };
 
 G_DEFINE_FINAL_TYPE (StickynoteApplication, stickynote_application, ADW_TYPE_APPLICATION)
@@ -54,22 +56,35 @@ stickynote_application_activate (GApplication *app)
 
 	g_assert (STICKYNOTE_IS_APPLICATION (app));
 
+	StickynoteApplication *self = STICKYNOTE_APPLICATION (app);
+
 	window = gtk_application_get_active_window (GTK_APPLICATION (app));
 
 	if (window == NULL)
-		window = g_object_new (STICKYNOTE_TYPE_WINDOW,
-		                       "application", app,
-		                       NULL);
+		window = stickynote_window_new (app, self->manager);
 
 	gtk_window_present (window);
 }
 
 static void
+stickynote_application_dispose (GObject *object)
+{
+	StickynoteApplication *self = STICKYNOTE_APPLICATION (object);
+
+	g_clear_object (&self->manager);
+
+	G_OBJECT_CLASS (stickynote_application_parent_class)->dispose (object);
+}
+
+static void
 stickynote_application_class_init (StickynoteApplicationClass *klass)
 {
-	GApplicationClass *app_class = G_APPLICATION_CLASS (klass);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	object_class->dispose = stickynote_application_dispose;
 
+	GApplicationClass *app_class = G_APPLICATION_CLASS (klass);
 	app_class->activate = stickynote_application_activate;
+	
 }
 
 static void
@@ -77,7 +92,7 @@ stickynote_application_about_action (GSimpleAction *action,
                                      GVariant      *parameter,
                                      gpointer       user_data)
 {
-	static const char *developers[] = {"Unknown", NULL};
+	static const char *developers[] = {"EricLin", NULL};
 	StickynoteApplication *self = user_data;
 	GtkWindow *window = NULL;
 
@@ -88,11 +103,14 @@ stickynote_application_about_action (GSimpleAction *action,
 	adw_show_about_dialog (GTK_WIDGET (window),
 	                       "application-name", "stickynote",
 	                       "application-icon", "com.ericlin.stickynote",
-	                       "developer-name", "Unknown",
+	                       "developer-name", "EricLin",
 	                       "translator-credits", _("translator-credits"),
 	                       "version", "0.1.0",
 	                       "developers", developers,
 	                       "copyright", "© 2026 EricLin",
+                           "license-type", GTK_LICENSE_GPL_3_0,
+						   "website", "https://github.com/EricLin0509/stickynote",
+						   "issue-url", "https://github.com/EricLin0509/stickynote/issues",
 	                       NULL);
 }
 
@@ -116,6 +134,9 @@ static const GActionEntry app_actions[] = {
 static void
 stickynote_application_init (StickynoteApplication *self)
 {
+	self->manager = stickynote_manager_new (G_APPLICATION (self));
+	stickynote_manager_init_notes (self->manager);
+
 	g_action_map_add_action_entries (G_ACTION_MAP (self),
 	                                 app_actions,
 	                                 G_N_ELEMENTS (app_actions),

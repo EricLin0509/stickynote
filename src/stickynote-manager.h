@@ -31,17 +31,30 @@ typedef enum {
     STICKYNOTE_MANAGER_MODE_LOAD,
     STICKYNOTE_MANAGER_MODE_SAVE,
     STICKYNOTE_MANAGER_MODE_DELETE
-} StickynoteManagerMode;
+} StickynoteManagerMode; // for "note-changed" callbacks
 
 #define STICKYNOTE_TYPE_MANAGER (stickynote_manager_get_type ())
 
 G_DECLARE_FINAL_TYPE (StickynoteManager, stickynote_manager, STICKYNOTE, MANAGER, GObject)
 
 StickynoteManager *
-stickynote_manager_new (void);
+stickynote_manager_new (GApplication *app);
 
+/* initialize the notes from the database */
+/*
+  * This function is used to initialize the notes from the database and update the UI
+  * with the notes.
+*/
 void
 stickynote_manager_init_notes (StickynoteManager *self);
+
+/* get all notes from the database */
+/*
+  * Simliar to `stickynote_manager_init_notes`, but this function is used to
+  * get all notes from the database and update the UI.
+*/
+void
+stickynote_manager_get_notes (StickynoteManager *self);
 
 void
 stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata);
