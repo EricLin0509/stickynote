@@ -192,21 +192,6 @@ on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metada
     g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
 }
 
-static gboolean
-on_stickynote_window_close (StickynoteEditorWindow *window, gpointer user_data)
-{
-    Metadata *metadata = stickynote_editor_window_get_metadata(window);
-
-    g_return_val_if_fail(META_IS_DATA(metadata), TRUE);
-
-    g_object_set_data(G_OBJECT(metadata), "stickynote-editor-window", NULL); // Remove the window from the manager
-
-    if (metadata_get_path(metadata) == NULL) // If the note is not saved, clear the metadata
-        g_clear_object (&metadata);
-
-    return FALSE;
-}
-
 void
 stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
 {
@@ -215,11 +200,7 @@ stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
     StickynoteEditorWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
 
     if (window == NULL)
-    {
         window = stickynote_editor_window_new_full(self->app, metadata, G_CALLBACK(on_stickynote_window_save_note), self);
-        stickynote_editor_window_connect_signal(window, "close-request", G_CALLBACK(on_stickynote_window_close), NULL);
-        g_object_set_data(G_OBJECT(metadata), "stickynote-editor-window", window);
-    }
     
     gtk_window_present(GTK_WINDOW(window));
 }

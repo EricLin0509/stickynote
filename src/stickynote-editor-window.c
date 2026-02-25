@@ -61,7 +61,12 @@ enum {
 
 static guint stickynote_editor_window_signals[N_SIGNALS];
 
-/* GObject essential methods */
+enum {
+	PROP_METADATA = 1,
+	N_PROPS
+};
+
+static GParamSpec *stickynote_editor_window_props[N_PROPS] = { NULL, };
 
 static void
 emit_file_saved_signal (StickynoteEditorWindow *self)
@@ -98,6 +103,21 @@ on_changed_cb (StickynoteEditorWindow *self, GtkTextBuffer *buffer)
 	g_autofree gchar *char_count_label_text = g_strdup_printf ("Characters %d", total_chars);
 
 	gtk_label_set_text (self->char_count_label, char_count_label_text);
+}
+
+static gboolean
+on_stickynote_window_close (StickynoteEditorWindow *window, gpointer user_data)
+{
+    Metadata *metadata = g_weak_ref_get (&window->metadata);
+
+    if (!META_IS_DATA (metadata)) return FALSE;
+
+    g_object_set_data(G_OBJECT(metadata), "stickynote-editor-window", NULL); // Remove the window from the manager
+
+    if (metadata_get_path(metadata) == NULL) // If the note is not saved, clear the metadata
+        g_clear_object (&metadata);
+
+    return FALSE;
 }
 
 static void
@@ -187,6 +207,72 @@ file_saved_action (GSimpleAction *action,
 	emit_file_saved_signal (self);
 }
 
+static void
+stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *metadata)
+{
+	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self) && META_IS_DATA (metadata));
+
+	g_object_set_data (G_OBJECT (metadata), "stickynote-editor-window", self); // Add the window to the metadata object
+	g_weak_ref_set (&self->metadata, metadata);
+
+	const char *title = NULL;
+	int color_scheme = -1;
+
+	metadata_get_data (metadata, &color_scheme, &title, NULL);
+
+	adw_navigation_page_set_title (self->editor_page, (title && *title) ? title : gettext("Untitled"));
+
+	if (color_scheme == -1) // If no color scheme define, use random color
+	{
+		int random_number = g_random_int_range (0, COLOR_SCHEME_COUNT * 6); // Multiply by 6 to get a better ramdom distribution
+		color_scheme = random_number % COLOR_SCHEME_COUNT;
+	}
+
+	if (metadata_get_content_offset (metadata) > 0)
+		metadata_load_direct (metadata, self->text_buffer);
+
+	gtk_widget_add_css_class (GTK_WIDGET (self), stickynote_color_scheme[color_scheme]);
+
+	self->last_color_scheme_index = color_scheme;
+	self->has_unsaved_changes = FALSE;
+
+	g_object_notify_by_pspec (G_OBJECT (self), stickynote_editor_window_props[PROP_METADATA]); // Notify the change of the metadata property
+}
+
+/* GObject essential methods */
+
+static void
+stickynote_editor_window_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+{
+	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
+
+	switch (prop_id)
+	{
+		case PROP_METADATA:
+			stickynote_editor_window_set_metadata (self, g_value_get_object (value));
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+			break;
+	}
+}
+
+static void
+stickynote_editor_window_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
+
+	switch (prop_id)
+	{
+		case PROP_METADATA:
+			g_value_set_object (value, g_weak_ref_get (&self->metadata));
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+			break;
+	}
+}
+
 static const GActionEntry window_actions[] = {
 	{ "save", file_saved_action },
 };
@@ -197,6 +283,8 @@ stickynote_editor_window_dispose (GObject *object)
 	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
 
 	GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
+
+	g_weak_ref_clear (&self->metadata);
 
 	g_clear_pointer (&navigation_view, gtk_widget_unparent);
 
@@ -210,7 +298,16 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 
 	object_class->dispose = stickynote_editor_window_dispose;
 
-	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+	object_class->set_property = stickynote_editor_window_set_property;
+	object_class->get_property = stickynote_editor_window_get_property;
+
+	stickynote_editor_window_props[PROP_METADATA] =  g_param_spec_object ("metadata",
+																									"Metadata",
+																									"The metadata object",
+																									TYPE_METADATA,
+																									G_PARAM_READWRITE | G_PARAM_EXPLICIT_NOTIFY);
+
+	g_object_class_install_properties (object_class, N_PROPS, stickynote_editor_window_props);
 
 	stickynote_editor_window_signals[FILE_SAVED] = g_signal_new ("file-save",
             G_TYPE_FROM_CLASS (klass),
@@ -223,6 +320,8 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             2,
             G_TYPE_POINTER, // The metadata pointer
 			G_TYPE_POINTER); // The content pointer
+
+	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-editor-window.ui");
 	gtk_widget_class_bind_template_callback (widget_class, on_emoji_picked_cb);
@@ -246,6 +345,8 @@ stickynote_editor_window_init (StickynoteEditorWindow *self)
 {
 	gtk_widget_init_template (GTK_WIDGET (self));
 
+	g_weak_ref_init (&self->metadata, NULL);
+
 	self->signal_ids = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 
 	GtkPopover *popover = gtk_menu_button_get_popover (self->editor_menu);
@@ -262,38 +363,16 @@ stickynote_editor_window_init (StickynoteEditorWindow *self)
 	                                 window_actions,
 	                                 G_N_ELEMENTS (window_actions),
 	                                 self);
+
+	stickynote_editor_window_connect_signal (self, "close-request", G_CALLBACK (on_stickynote_window_close), NULL);
 }
 
 StickynoteEditorWindow *
 stickynote_editor_window_new (GApplication *app, Metadata *data)
 {
-	g_return_val_if_fail (data != NULL && data != NULL, NULL);
+	g_return_val_if_fail (META_IS_DATA (data), NULL);
 
-	StickynoteEditorWindow *self = g_object_new (STICKYNOTE_TYPE_EDITOR_WINDOW, "application", app, NULL);
-	g_weak_ref_init (&self->metadata, data);
-
-	const char *title = NULL;
-	int color_scheme = -1;
-
-	metadata_get_data (data, &color_scheme, &title, NULL);
-
-	adw_navigation_page_set_title (self->editor_page, (title && *title) ? title : gettext("Untitled"));
-
-	if (color_scheme == -1) // If no color scheme define, use random color
-	{
-		int random_number = g_random_int_range (0, COLOR_SCHEME_COUNT * 6); // Multiply by 6 to get a better ramdom distribution
-		color_scheme = random_number % COLOR_SCHEME_COUNT;
-	}
-
-	if (metadata_get_content_offset (data) > 0)
-	{
-		metadata_load_direct (data, self->text_buffer);
-	}
-
-	gtk_widget_add_css_class (GTK_WIDGET (self), stickynote_color_scheme[color_scheme]);
-
-	self->last_color_scheme_index = color_scheme;
-	self->has_unsaved_changes = FALSE;
+	StickynoteEditorWindow *self = g_object_new (STICKYNOTE_TYPE_EDITOR_WINDOW, "application", app, "metadata", data, NULL);
 
 	return self;
 }
@@ -306,14 +385,6 @@ stickynote_editor_window_new_full (GApplication *app, Metadata *data, GCallback 
 	stickynote_editor_window_connect_signal (self, "file-save", file_save_signal_handler, user_data);
 
 	return self;
-}
-
-Metadata *
-stickynote_editor_window_get_metadata (StickynoteEditorWindow *self)
-{
-	g_return_val_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self), NULL);
-
-	return g_weak_ref_get (&self->metadata);
 }
 
 void
