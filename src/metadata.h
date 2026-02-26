@@ -41,6 +41,13 @@ G_DECLARE_FINAL_TYPE(Metadata, metadata, META, DATA, GObject)
 Metadata *
 metadata_new(const gchar *path);
 
+/* Copy a metadata object */
+/*
+  *@warning This function only copies the `title` and `color_scheme` fields,
+*/
+Metadata *
+metadata_copy(Metadata *metadata);
+
 /* Build a file name */
 gchar *
 metadata_build_file_name(Metadata *metadata);

@@ -24,6 +24,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#include <glib/gi18n.h>
+
 #include "metadata.h"
 
 #define TIMESTAMP_GET_TIME_IMPLEMENTATION
@@ -513,4 +515,17 @@ metadata_new(const gchar *path)
     }
 
     return metadata;
+}
+
+Metadata *
+metadata_copy(Metadata *metadata)
+{
+    g_return_val_if_fail(metadata != NULL, NULL);
+
+    Metadata *copy = g_object_new(TYPE_METADATA, NULL);
+
+    copy->color_scheme = metadata->color_scheme;
+    copy->title = g_strdup_printf(gettext("%s (Copy)"), metadata->title);
+
+    return copy;
 }

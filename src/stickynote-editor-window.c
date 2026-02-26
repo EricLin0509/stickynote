@@ -208,6 +208,36 @@ file_saved_action (GSimpleAction *action,
 }
 
 static void
+file_saved_copy_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
+{
+	StickynoteEditorWindow *self = user_data;
+
+	Metadata *metadata_old = g_weak_ref_get (&self->metadata);
+	g_return_if_fail (META_IS_DATA (metadata_old));
+
+	const char *title = NULL;
+	metadata_get_data (metadata_old, NULL, &title, NULL);
+
+	if (title == NULL || *title == '\0') // If the title is empty, just save the file
+	{
+		file_saved_action (action, parameter, user_data);
+		return;
+	}
+
+	g_object_set_data(G_OBJECT(metadata_old), "stickynote-editor-window", NULL); // Remove the window from the manager
+
+	Metadata *metadata_new = metadata_copy (metadata_old);
+	g_object_set_data (G_OBJECT(metadata_new), "stickynote-editor-window", self); // Add the window to the new metadata object
+	metadata_get_data (metadata_new, NULL, &title, NULL); // Get the new title
+	g_weak_ref_set (&self->metadata, metadata_new); // Update the weak reference to the new metadata object
+	adw_navigation_page_set_title (self->editor_page, title); // Update the title of the editor page
+
+	emit_file_saved_signal (self);
+}
+
+static void
 stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *metadata)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self) && META_IS_DATA (metadata));
@@ -275,6 +305,7 @@ stickynote_editor_window_get_property (GObject *object, guint prop_id, GValue *v
 
 static const GActionEntry window_actions[] = {
 	{ "save", file_saved_action },
+	{ "save-copy", file_saved_copy_action },
 };
 
 static void
