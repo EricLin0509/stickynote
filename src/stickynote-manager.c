@@ -234,6 +234,44 @@ stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
 }
 
+static void
+on_dialog_response (GObject* source_object, GAsyncResult *result, gpointer user_data)
+{
+    GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
+    Metadata *metadata = user_data;
+    GError *error = NULL;
+    GFile *file = gtk_file_dialog_save_finish (dialog, result, &error);
+
+    if (!G_IS_FILE (file))
+    {
+        if (error->code == GTK_DIALOG_ERROR_DISMISSED)
+            g_warning ("User cancelled the file save dialog");
+        else
+            g_critical ("Failed to save file: %s", error->message);
+
+        g_clear_error (&error);
+        return;
+    }
+    g_clear_error (&error);
+
+    g_autofree gchar *path = g_file_get_path (file);
+    g_object_unref (file);
+
+    if (path == NULL) return;
+
+    metadata_export (metadata, path);
+}
+
+void
+stickynote_manager_export_note (GtkWindow *window, Metadata *metadata)
+{
+    g_return_if_fail(GTK_IS_WINDOW(window) && META_IS_DATA (metadata));
+
+    GtkFileDialog *dialog = gtk_file_dialog_new ();
+
+    gtk_file_dialog_save (dialog, window, NULL, on_dialog_response, metadata);
+}
+
 /* ==== GObject ==== */
 
 static void

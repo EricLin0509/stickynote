@@ -118,8 +118,23 @@ stickynote_window_alert_choice (AdwAlertDialog *dialog, GAsyncResult *result, gp
 static void
 stickynote_window_delete_note (StickynoteWindow *self, gpointer user_data)
 {
+	g_return_if_fail (STICKYNOTE_IS_WINDOW (self));
+
 	adw_alert_dialog_choose (ADW_ALERT_DIALOG (self->alert_dialog), GTK_WIDGET (self), NULL,
                         (GAsyncReadyCallback) stickynote_window_alert_choice, user_data); // Show the alert dialog
+}
+
+static void
+stickynote_window_export_note (StickynoteWindow *self, gpointer user_data)
+{
+	g_return_if_fail (STICKYNOTE_IS_WINDOW (self));
+
+	GtkWidget *row = user_data;
+	g_return_if_fail (STICKYNOTE_IS_ROW (row));
+
+	Metadata *data = g_object_get_data (G_OBJECT (row), "metadata");
+
+	stickynote_manager_export_note (GTK_WINDOW (self), data);
 }
 
 static void
@@ -151,6 +166,7 @@ gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 		row = stickynote_row_new (title, date_str);
 		g_signal_connect_swapped (row, "edit-request", G_CALLBACK (stickynote_window_open_note), self);
 		g_signal_connect_swapped (row, "delete-request", G_CALLBACK (stickynote_window_delete_note), self);
+		g_signal_connect_swapped (row, "export-request", G_CALLBACK (stickynote_window_export_note), self);
 
 		/* Make connections with each other */
 		g_object_set_data (G_OBJECT (row), "metadata", data);

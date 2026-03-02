@@ -17,6 +17,10 @@
   <menu id="options_menu">
     <section>
       <item>
+        <attribute name="label" translatable="yes">Export</attribute>
+        <attribute name="action">row.export</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">Delete</attribute>
         <attribute name="action">row.delete</attribute>
       </item>

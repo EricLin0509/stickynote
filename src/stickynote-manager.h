@@ -65,6 +65,9 @@ stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const
 void
 stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata);
 
+void
+stickynote_manager_export_note (GtkWindow *window, Metadata *metadata);
+
 G_END_DECLS
 
 #endif /* STICKYNOTE_MANAGER_H */

@@ -35,6 +35,7 @@ struct _StickynoteRow {
 enum {
     EDIT_REQUEST,
     DELETE_REQUEST,
+    EXPORT_REQUEST,
     N_SIGNALS
 };
 
@@ -148,6 +149,16 @@ stickynote_row_class_init(StickynoteRowClass *klass)
             NULL,
             G_TYPE_NONE,
             0);
+
+    stickynote_row_signals[EXPORT_REQUEST] = g_signal_new ("export-request",
+            G_TYPE_FROM_CLASS (klass),
+            G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+            0,
+            NULL,
+            NULL,
+            NULL,
+            G_TYPE_NONE,
+            0);
 }
 
 /* A generic signal handler for all actions */
@@ -163,11 +174,14 @@ stickynote_row_emit_signal_action (GSimpleAction *action,
         g_signal_emit (row, stickynote_row_signals[EDIT_REQUEST], 0);
     else if (memcmp (action_name, "delete", 6) == 0)
         g_signal_emit (row, stickynote_row_signals[DELETE_REQUEST], 0);
+    else if (memcmp (action_name, "export", 6) == 0)
+        g_signal_emit (row, stickynote_row_signals[EXPORT_REQUEST], 0);
 }
 
 static const GActionEntry actions[] = {
     { "edit", stickynote_row_emit_signal_action },
     { "delete", stickynote_row_emit_signal_action },
+    { "export", stickynote_row_emit_signal_action },
 };
 
 static void

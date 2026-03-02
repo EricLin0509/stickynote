@@ -461,6 +461,74 @@ metadata_save(Metadata *metadata, const gchar *content)
     return TRUE;
 }
 
+gboolean
+metadata_export(Metadata *metadata, const gchar *new_file_path)
+{
+    g_return_val_if_fail(metadata != NULL && metadata->path != NULL && new_file_path != NULL, FALSE);
+
+    int orig_file_fd = open(metadata->path, O_RDONLY);
+
+    if (orig_file_fd < 0)
+    {
+        g_critical("Failed to open original file: %s", metadata->path);
+        return FALSE;
+    }
+
+    size_t orig_file_size = get_file_size(orig_file_fd);
+
+    if (orig_file_size == 0)
+    {
+        close(orig_file_fd);
+        return FALSE;
+    }
+
+    char *orig_file_content = mmap(NULL, orig_file_size, PROT_READ, MAP_PRIVATE, orig_file_fd, 0);
+
+    if (orig_file_content == MAP_FAILED)
+    {
+        g_critical("Failed to map original file: %s", metadata->path);
+        close(orig_file_fd);
+        return FALSE;
+    }
+
+    int new_file_fd = open(new_file_path, O_RDWR | O_CREAT, 0644);
+
+    if (new_file_fd < 0)
+    {
+        g_critical("Failed to open new file: %s", new_file_path);
+        close(orig_file_fd);
+        return FALSE;
+    }
+
+    if (ftruncate(new_file_fd, orig_file_size) < 0) // Truncate new file to the correct size
+    {
+        g_critical("Failed to truncate new file: %s", new_file_path);
+        close(new_file_fd);
+        close(orig_file_fd);
+        return FALSE;
+    }
+
+    char *new_file_content = mmap(NULL, orig_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, new_file_fd, 0);
+
+    if (new_file_content == MAP_FAILED)
+    {
+        g_critical("Failed to map new file: %s", new_file_path);
+        close(new_file_fd);
+        close(orig_file_fd);
+        return FALSE;
+    }
+
+    memcpy(new_file_content, orig_file_content, orig_file_size); // Copy the content from the original file to the new file
+
+    msync(new_file_content, orig_file_size, MS_SYNC); // Write to disk
+    munmap(new_file_content, orig_file_size); // Unmap the new file
+    munmap(orig_file_content, orig_file_size); // Unmap the original file
+    close(new_file_fd); // Close the new file
+    close(orig_file_fd); // Close the original file
+
+    return TRUE;
+}
+
 /* ==== GObject initialization methods ==== */
 
 static void

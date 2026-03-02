@@ -27,6 +27,12 @@
             <property name="action-name">win.save</property>
           </object>
         </child>
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Save as copy</property>
+            <property name="action-name">win.save-copy</property>
+          </object>
+        </child>
       </object>
     </child>
   </object>

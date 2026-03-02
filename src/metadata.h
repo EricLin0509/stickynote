@@ -114,6 +114,14 @@ metadata_update(Metadata *metadata, int color_scheme, const gchar *title, gboole
 gboolean
 metadata_save(Metadata *metadata, const gchar *content);
 
+/* Export the file to a different location */
+/*
+  @param metadata The metadata object to export
+  @param new_file_path The new file path to export to
+*/
+gboolean
+metadata_export(Metadata *metadata, const gchar *new_file_path);
+
 G_END_DECLS
 
 #endif /* METADATA_H */
