@@ -179,17 +179,19 @@ stickynote_manager_get_notes (StickynoteManager *self)
     }
 }
 
-static void
+static gboolean
 on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metadata, const gchar *content, gpointer user_data)
 {
     StickynoteManager *manager = STICKYNOTE_MANAGER(user_data);
 
-    if (!save_metadata_to_file(metadata, content)) return;
+    if (!save_metadata_to_file(metadata, content)) return FALSE;
 
     const gchar *path = metadata_get_path(metadata);
     g_hash_table_replace(manager->metadata_table, (void *)path, metadata); // Update the metadata in the manager
 
     g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
+
+    return TRUE;
 }
 
 void

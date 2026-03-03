@@ -79,13 +79,18 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
   	GtkTextIter start;
   	GtkTextIter end;
 	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
-	gchar *content = gtk_text_buffer_get_text (self->text_buffer, &start, &end, FALSE);
+	const gchar *content = gtk_text_buffer_get_text (self->text_buffer, &start, &end, FALSE);
 
 	metadata_update (metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
 
-	self->has_unsaved_changes = FALSE; // Mark the file as saved
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, metadata, content);
+	gboolean save_result = FALSE;
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, metadata, content, &save_result);
 
+	if (!save_result) return; // If the signal handler returns FALSE, it means save failed
+
+	/* TODO: Add a toast message to notify the user that the file has been saved */
+
+	self->has_unsaved_changes = FALSE; // Mark the file as saved
 	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", TRUE);
 }
 
@@ -340,7 +345,7 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             NULL,
             NULL,
             NULL,
-            G_TYPE_NONE,
+            G_TYPE_BOOLEAN, // To check whether the file is saved successfully
             2,
             G_TYPE_POINTER, // The metadata pointer
 			G_TYPE_POINTER); // The content pointer
