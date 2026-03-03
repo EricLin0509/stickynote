@@ -138,10 +138,10 @@ check_title_valid (StickynoteEditorWindow *self, GtkEditable* editable)
 		return;
 	}
 
-	if (memcmp (title, ".", 2) == 0 || memcmp (title, "..", 3) == 0) // Current or parent directory
+	if (memcmp (title, " ", 1) == 0) // If the title starts with spaces, it's not a valid title
 	{
 		gtk_widget_set_sensitive (GTK_WIDGET (self->save_button), FALSE);
-		adw_preferences_row_set_title (ADW_PREFERENCES_ROW (editable), gettext("Title cannot be '.' or '..'"));
+		adw_preferences_row_set_title (ADW_PREFERENCES_ROW (editable), gettext("Title cannot start with spaces"));
 		return;
 	}
 
