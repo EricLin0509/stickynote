@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-18 17:24+0800\n"
+"POT-Creation-Date: 2026-03-04 00:42+0800\n"
 "PO-Revision-Date: 2026-02-18 16:56+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -54,47 +54,67 @@ msgstr "Notes Storage Location"
 msgid "Where the notebooks are stored (requires app restart)"
 msgstr "Where the notebooks are stored (requires app restart)"
 
-#: src/stickynote-window.c:59
+#: src/stickynote-window.c:65
 msgid "No notes found"
 msgstr "No notes found"
 
-#: src/stickynote-window.c:60
+#: src/stickynote-window.c:66
 msgid "Create a new note by clicking the 'New' button"
 msgstr "Create a new note by clicking the 'New' button"
 
-#: src/stickynote-window.c:64 src/stickynote-window.ui:6
+#: src/stickynote-window.c:70 src/stickynote-window.ui:6
 #: src/stickynote-editor-window.ui:6
 msgid "StickyNote"
 msgstr "StickyNote"
 
-#: src/stickynote-window.c:66
+#: src/stickynote-window.c:72
 #, c-format
 msgid "%zu note%s in total"
 msgstr "%zu note%s in total"
+
+#: src/stickynote-window.c:151 src/stickynote-editor-window.c:256
+msgid "Untitled"
+msgstr "Untitled"
+
+#: src/stickynote-window.c:261
+msgid "Delete Note?"
+msgstr "Delete Note?"
+
+#: src/stickynote-window.c:262
+msgid "This will permanently delete the note. Are you sure?"
+msgstr "This will permanently delete the note. Are you sure?"
+
+#: src/stickynote-window.c:267
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/stickynote-window.c:268 src/stickynote-row.ui:24
+msgid "Delete"
+msgstr "Delete"
 
 #: src/stickynote-window.ui:18
 msgid "New"
 msgstr "New"
 
-#: src/stickynote-window.ui:29 src/stickynote-editor-window.ui:28
+#: src/stickynote-window.ui:29 src/stickynote-editor-window.ui:33
 msgid "Main Menu"
 msgstr "Main Menu"
 
-#: src/stickynote-window.ui:53
+#: src/stickynote-window.ui:59
 msgid "_Preferences"
 msgstr "Preferences"
 
-#: src/stickynote-window.ui:57
+#: src/stickynote-window.ui:63 src/stickynote-editor-window.ui:153
 msgid "_Keyboard Shortcuts"
 msgstr "Keyboard Shortcuts"
 
-#: src/stickynote-window.ui:61
+#: src/stickynote-window.ui:67 src/stickynote-editor-window.ui:157
 msgid "_About StickyNote"
 msgstr "About StickyNote"
 
-#: src/stickynote-window.ui:65 src/stickynote-editor-window.ui:84
-msgid "_Quit"
-msgstr "Quit"
+#: src/stickynote-row.ui:20
+msgid "Export"
+msgstr ""
 
 #: src/theme-selector.ui:28
 msgid "Red"
@@ -120,14 +140,71 @@ msgstr "Blue"
 msgid "Purple"
 msgstr "Purple"
 
-#: src/stickynote-editor-window.c:190
-msgid "Untitled"
-msgstr "Untitled"
+#: src/stickynote-editor-window.c:144
+msgid "Title cannot start with spaces"
+msgstr ""
 
-#: src/stickynote-editor-window.ui:15 src/stickynote-editor-window.ui:16
+#: src/stickynote-editor-window.c:151
+msgid "Title cannot contain '/'"
+msgstr ""
+
+#: src/stickynote-editor-window.c:156 src/stickynote-editor-window.ui:104
+msgid "Enter the title here"
+msgstr ""
+
+#: src/stickynote-editor-window.ui:20 src/stickynote-editor-window.ui:21
 msgid "Emojis"
 msgstr "Emojis"
 
-#: src/stickynote-editor-window.ui:80
+#: src/stickynote-editor-window.ui:82
+msgid "Set title"
+msgstr "Set title"
+
+#: src/stickynote-editor-window.ui:91
+msgid "Set a title"
+msgstr "Set a title"
+
+#: src/stickynote-editor-window.ui:92
+msgid "You need to set a title before saving this note"
+msgstr "You need to set a title before saving this note"
+
+#: src/stickynote-editor-window.ui:115 src/stickynote-editor-window.ui:143
 msgid "Save"
 msgstr "Save"
+
+#: src/stickynote-editor-window.ui:147
+msgid "Save as copy"
+msgstr "Save as copy"
+
+#: src/metadata.c:596
+#, c-format
+msgid "%s (Copy)"
+msgstr "%s (Copy)"
+
+#: src/shortcuts-dialog.ui:6
+msgid "General"
+msgstr "General"
+
+#: src/shortcuts-dialog.ui:9
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "Show Shortcuts"
+
+#: src/shortcuts-dialog.ui:15
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "Quit"
+
+#: src/shortcuts-dialog.ui:23
+msgid "Editor"
+msgstr "Editor"
+
+#: src/shortcuts-dialog.ui:26
+msgctxt "shortcut window"
+msgid "Save"
+msgstr "Save"
+
+#: src/shortcuts-dialog.ui:32
+msgctxt "shortcut window"
+msgid "Save as copy"
+msgstr ""

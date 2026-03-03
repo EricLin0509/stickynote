@@ -6,6 +6,9 @@ data/com.ericlin.stickynote.gschema.xml
 src/main.c
 src/stickynote-window.c
 src/stickynote-window.ui
+src/stickynote-row.ui
 src/theme-selector.ui
 src/stickynote-editor-window.c
 src/stickynote-editor-window.ui
+src/metadata.c
+src/shortcuts-dialog.ui

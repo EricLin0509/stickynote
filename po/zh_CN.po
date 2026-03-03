@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-18 17:24+0800\n"
+"POT-Creation-Date: 2026-03-04 00:42+0800\n"
 "PO-Revision-Date: 2026-02-18 16:57+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -53,47 +53,67 @@ msgstr "笔记存储位置"
 msgid "Where the notebooks are stored (requires app restart)"
 msgstr "指定笔记存储位置（需要重新启动）"
 
-#: src/stickynote-window.c:59
+#: src/stickynote-window.c:65
 msgid "No notes found"
 msgstr "未找到笔记"
 
-#: src/stickynote-window.c:60
+#: src/stickynote-window.c:66
 msgid "Create a new note by clicking the 'New' button"
 msgstr "按下新建按钮以创建新的笔记"
 
-#: src/stickynote-window.c:64 src/stickynote-window.ui:6
+#: src/stickynote-window.c:70 src/stickynote-window.ui:6
 #: src/stickynote-editor-window.ui:6
 msgid "StickyNote"
 msgstr "便签"
 
-#: src/stickynote-window.c:66
+#: src/stickynote-window.c:72
 #, c-format
 msgid "%zu note%s in total"
 msgstr "共有%zu个笔记"
+
+#: src/stickynote-window.c:151 src/stickynote-editor-window.c:256
+msgid "Untitled"
+msgstr "未命名"
+
+#: src/stickynote-window.c:261
+msgid "Delete Note?"
+msgstr "删除笔记？"
+
+#: src/stickynote-window.c:262
+msgid "This will permanently delete the note. Are you sure?"
+msgstr "这将永远删除此笔记。确定吗？"
+
+#: src/stickynote-window.c:267
+msgid "Cancel"
+msgstr "取消"
+
+#: src/stickynote-window.c:268 src/stickynote-row.ui:24
+msgid "Delete"
+msgstr "删除"
 
 #: src/stickynote-window.ui:18
 msgid "New"
 msgstr "新建"
 
-#: src/stickynote-window.ui:29 src/stickynote-editor-window.ui:28
+#: src/stickynote-window.ui:29 src/stickynote-editor-window.ui:33
 msgid "Main Menu"
 msgstr "主菜单"
 
-#: src/stickynote-window.ui:53
+#: src/stickynote-window.ui:59
 msgid "_Preferences"
 msgstr "首选项"
 
-#: src/stickynote-window.ui:57
+#: src/stickynote-window.ui:63 src/stickynote-editor-window.ui:153
 msgid "_Keyboard Shortcuts"
 msgstr "快捷键"
 
-#: src/stickynote-window.ui:61
+#: src/stickynote-window.ui:67 src/stickynote-editor-window.ui:157
 msgid "_About StickyNote"
 msgstr "关于便签"
 
-#: src/stickynote-window.ui:65 src/stickynote-editor-window.ui:84
-msgid "_Quit"
-msgstr "退出"
+#: src/stickynote-row.ui:20
+msgid "Export"
+msgstr "导出"
 
 #: src/theme-selector.ui:28
 msgid "Red"
@@ -119,14 +139,71 @@ msgstr "蓝色"
 msgid "Purple"
 msgstr "紫色"
 
-#: src/stickynote-editor-window.c:190
-msgid "Untitled"
-msgstr "未命名"
+#: src/stickynote-editor-window.c:144
+msgid "Title cannot start with spaces"
+msgstr "标题不能以空格开头"
 
-#: src/stickynote-editor-window.ui:15 src/stickynote-editor-window.ui:16
+#: src/stickynote-editor-window.c:151
+msgid "Title cannot contain '/'"
+msgstr "标题不能包含 “/”"
+
+#: src/stickynote-editor-window.c:156 src/stickynote-editor-window.ui:104
+msgid "Enter the title here"
+msgstr "在此输入标题"
+
+#: src/stickynote-editor-window.ui:20 src/stickynote-editor-window.ui:21
 msgid "Emojis"
 msgstr "表情符号"
 
-#: src/stickynote-editor-window.ui:80
+#: src/stickynote-editor-window.ui:82
+msgid "Set title"
+msgstr "设置标题"
+
+#: src/stickynote-editor-window.ui:91
+msgid "Set a title"
+msgstr "设置一个标题"
+
+#: src/stickynote-editor-window.ui:92
+msgid "You need to set a title before saving this note"
+msgstr "保存该笔记之前您需要设置一个标题"
+
+#: src/stickynote-editor-window.ui:115 src/stickynote-editor-window.ui:143
 msgid "Save"
 msgstr "保存"
+
+#: src/stickynote-editor-window.ui:147
+msgid "Save as copy"
+msgstr "另存为副本"
+
+#: src/metadata.c:596
+#, c-format
+msgid "%s (Copy)"
+msgstr "%s（副本）"
+
+#: src/shortcuts-dialog.ui:6
+msgid "General"
+msgstr "常规"
+
+#: src/shortcuts-dialog.ui:9
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr "显示快捷键"
+
+#: src/shortcuts-dialog.ui:15
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "退出"
+
+#: src/shortcuts-dialog.ui:23
+msgid "Editor"
+msgstr "编辑器"
+
+#: src/shortcuts-dialog.ui:26
+msgctxt "shortcut window"
+msgid "Save"
+msgstr "保存"
+
+#: src/shortcuts-dialog.ui:32
+msgctxt "shortcut window"
+msgid "Save as copy"
+msgstr "另存为副本"

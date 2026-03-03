@@ -101,7 +101,7 @@
                               <object class="AdwPreferencesGroup">
                                 <child>
                                   <object class="AdwEntryRow" id="title_entry">
-                                    <property name="title">Enter the title here</property>
+                                    <property name="title" translatable="yes">Enter the title here</property>
                                     <signal name="changed" handler="check_title_valid" swapped="yes"/>
                                   </object>
                                 </child>
@@ -112,7 +112,7 @@
                                 <property name="sensitive">false</property>
                                 <property name="halign">end</property>
                                 <property name="height-request">40</property>
-                                <property name="label">Save</property>
+                                <property name="label" translatable="yes">Save</property>
                                 <signal name="clicked" handler="on_title_apply" swapped="yes"/>
                                 <style>
                                   <class name="suggested-action"/>
