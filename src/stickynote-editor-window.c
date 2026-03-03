@@ -85,6 +85,8 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
 
 	self->has_unsaved_changes = FALSE; // Mark the file as saved
 	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, metadata, content);
+
+	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", TRUE);
 }
 
 static void
@@ -183,11 +185,11 @@ on_color_scheme_changed_cb (ThemeSelector *self, int color_scheme_index, Stickyn
 }
 
 static void
-file_saved_action (GSimpleAction *action,
-                                GVariant      *parameter,
-                                gpointer       user_data)
+file_saved_action (GtkWidget  *widget,
+								const char *action_name,
+                                GVariant      *parameter)
 {
-	StickynoteEditorWindow *self = user_data;
+	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (widget);
 
 	Metadata *metadata = g_weak_ref_get (&self->metadata);
 	g_return_if_fail (META_IS_DATA (metadata));
@@ -208,23 +210,16 @@ file_saved_action (GSimpleAction *action,
 }
 
 static void
-file_saved_copy_action (GSimpleAction *action,
-                                GVariant      *parameter,
-                                gpointer       user_data)
+file_saved_copy_action (GtkWidget  *widget,
+								const char *action_name,
+                                GVariant      *parameter)
 {
-	StickynoteEditorWindow *self = user_data;
+	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (widget);
 
 	Metadata *metadata_old = g_weak_ref_get (&self->metadata);
 	g_return_if_fail (META_IS_DATA (metadata_old));
 
 	const char *title = NULL;
-	metadata_get_data (metadata_old, NULL, &title, NULL);
-
-	if (title == NULL || *title == '\0') // If the title is empty, just save the file
-	{
-		file_saved_action (action, parameter, user_data);
-		return;
-	}
 
 	g_object_set_data(G_OBJECT(metadata_old), "stickynote-editor-window", NULL); // Remove the window from the manager
 
@@ -244,6 +239,9 @@ stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *m
 
 	g_object_set_data (G_OBJECT (metadata), "stickynote-editor-window", self); // Add the window to the metadata object
 	g_weak_ref_set (&self->metadata, metadata);
+
+	if (metadata_get_path (metadata) == NULL)
+		gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", FALSE);
 
 	const char *title = NULL;
 	int color_scheme = -1;
@@ -302,11 +300,6 @@ stickynote_editor_window_get_property (GObject *object, guint prop_id, GValue *v
 			break;
 	}
 }
-
-static const GActionEntry window_actions[] = {
-	{ "save", file_saved_action },
-	{ "save-copy", file_saved_copy_action },
-};
 
 static void
 stickynote_editor_window_dispose (GObject *object)
@@ -369,6 +362,9 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, set_title_page);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, title_entry);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, save_button);
+
+	gtk_widget_class_install_action (widget_class, "win.save", NULL, file_saved_action);
+	gtk_widget_class_install_action (widget_class, "win.save-copy", NULL, file_saved_copy_action);
 }
 
 static void
@@ -389,11 +385,6 @@ stickynote_editor_window_init (StickynoteEditorWindow *self)
                               "theme");
 
 	g_signal_connect (theme_selector, "color-scheme-changed", G_CALLBACK (on_color_scheme_changed_cb), self);
-
-    g_action_map_add_action_entries (G_ACTION_MAP (self),
-	                                 window_actions,
-	                                 G_N_ELEMENTS (window_actions),
-	                                 self);
 
 	stickynote_editor_window_connect_signal (self, "close-request", G_CALLBACK (on_stickynote_window_close), NULL);
 }
