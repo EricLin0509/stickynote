@@ -222,10 +222,7 @@ stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
 
     GtkWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
     if (GTK_IS_WINDOW(window))
-    {
-        gtk_window_present(window);
-        return FALSE;
-    }
+        gtk_window_destroy(window); // Destroy the editor window if it is open
 
     if (!metadata_delete_file(metadata)) return FALSE;
 
