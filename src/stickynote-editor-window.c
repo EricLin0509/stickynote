@@ -33,6 +33,7 @@ struct _StickynoteEditorWindow
 	AdwApplicationWindow  parent_instance;
 
 	/* Template widgets */
+	AdwToastOverlay *toast_overlay;
 	AdwNavigationView *navigation_view;
 	AdwNavigationPage *editor_page;
 	GtkTextView *text_view;
@@ -69,6 +70,17 @@ enum {
 static GParamSpec *stickynote_editor_window_props[N_PROPS] = { NULL, };
 
 static void
+send_simple_toast_message (StickynoteEditorWindow *self, const char *message)
+{
+	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
+
+	AdwToast *toast = adw_toast_new (message);
+	adw_toast_set_timeout (toast, 5); // 5 seconds timeout
+
+	adw_toast_overlay_add_toast (self->toast_overlay, toast);
+}
+
+static void
 emit_file_saved_signal (StickynoteEditorWindow *self)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
@@ -86,12 +98,15 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
 	gboolean save_result = FALSE;
 	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, metadata, content, &save_result);
 
-	if (!save_result) return; // If the signal handler returns FALSE, it means save failed
-
-	/* TODO: Add a toast message to notify the user that the file has been saved */
+	if (!save_result) // If the signal handler returns FALSE, it means save failed
+	{
+		send_simple_toast_message (self, gettext ("Failed to save the note"));
+		return;
+	}
 
 	self->has_unsaved_changes = FALSE; // Mark the file as saved
 	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", TRUE);
+	send_simple_toast_message (self, gettext ("Note saved successfully"));
 }
 
 static void
@@ -311,9 +326,9 @@ stickynote_editor_window_dispose (GObject *object)
 {
 	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (object);
 
-	GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
-
 	g_weak_ref_clear (&self->metadata);
+
+	GtkWidget *navigation_view = GTK_WIDGET (self->toast_overlay);
 
 	g_clear_pointer (&navigation_view, gtk_widget_unparent);
 
@@ -357,6 +372,7 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 	gtk_widget_class_bind_template_callback (widget_class, on_changed_cb);
 	gtk_widget_class_bind_template_callback (widget_class, on_title_apply);
 	gtk_widget_class_bind_template_callback (widget_class, check_title_valid);
+	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, toast_overlay);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, navigation_view);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, editor_page);
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, text_view);
