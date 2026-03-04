@@ -184,14 +184,7 @@ on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metada
 {
     StickynoteManager *manager = STICKYNOTE_MANAGER(user_data);
 
-    if (!save_metadata_to_file(metadata, content)) return FALSE;
-
-    const gchar *path = metadata_get_path(metadata);
-    g_hash_table_replace(manager->metadata_table, (void *)path, metadata); // Update the metadata in the manager
-
-    g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
-
-    return TRUE;
+    return stickynote_manager_save_note(manager, metadata, content);
 }
 
 void
@@ -207,33 +200,40 @@ stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
     gtk_window_present(GTK_WINDOW(window));
 }
 
-void
+gboolean
 stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const gchar *content)
 {
-    g_return_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata));
+    g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FALSE);
 
-    if (!save_metadata_to_file(metadata, content)) return;
+    if (!save_metadata_to_file(metadata, content)) return FALSE;
+
+    const gchar *path = metadata_get_path(metadata);
+    g_hash_table_replace(self->metadata_table, (void *)path, metadata); // Update the metadata in the manager
 
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
+
+    return TRUE;
 }
 
-void
+gboolean
 stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
 {
-    g_return_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata));
+    g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FALSE);
 
     GtkWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
     if (GTK_IS_WINDOW(window))
     {
         gtk_window_present(window);
-        return;
+        return FALSE;
     }
 
-    if (!metadata_delete_file(metadata)) return;
+    if (!metadata_delete_file(metadata)) return FALSE;
 
     g_hash_table_remove(self->metadata_table, metadata_get_path(metadata));
 
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
+
+    return TRUE;
 }
 
 static void

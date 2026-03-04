@@ -59,10 +59,10 @@ stickynote_manager_get_notes (StickynoteManager *self);
 void
 stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata);
 
-void
+gboolean
 stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const char *content);
 
-void
+gboolean
 stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata);
 
 void
