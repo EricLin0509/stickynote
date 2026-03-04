@@ -33,6 +33,12 @@
             <property name="action-name">win.save-copy</property>
           </object>
         </child>
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Export notes</property>
+            <property name="action-name">win.export</property>
+          </object>
+        </child>
       </object>
     </child>
   </object>

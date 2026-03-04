@@ -57,6 +57,7 @@ G_DEFINE_FINAL_TYPE (StickynoteEditorWindow, stickynote_editor_window, ADW_TYPE_
 
 enum {
     FILE_SAVED,
+	FILE_EXPORT,
     N_SIGNALS
 };
 
@@ -106,6 +107,7 @@ emit_file_saved_signal (StickynoteEditorWindow *self)
 
 	self->has_unsaved_changes = FALSE; // Mark the file as saved
 	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", TRUE);
+	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", TRUE);
 	send_simple_toast_message (self, gettext ("Note saved successfully"));
 }
 
@@ -253,6 +255,16 @@ file_saved_copy_action (GtkWidget  *widget,
 }
 
 static void
+emit_export_request_action (GtkWidget  *widget,
+								const char *action_name,
+                                GVariant      *parameter)
+{
+	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (widget);
+
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_EXPORT], 0);
+}
+
+static void
 stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *metadata)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self) && META_IS_DATA (metadata));
@@ -261,7 +273,10 @@ stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *m
 	g_weak_ref_set (&self->metadata, metadata);
 
 	if (metadata_get_path (metadata) == NULL)
+	{
 		gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", FALSE);
+		gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", FALSE);
+	}
 
 	const char *title = NULL;
 	int color_scheme = -1;
@@ -365,6 +380,16 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             G_TYPE_POINTER, // The metadata pointer
 			G_TYPE_POINTER); // The content pointer
 
+	stickynote_editor_window_signals[FILE_EXPORT] = g_signal_new ("file-export",
+            G_TYPE_FROM_CLASS (klass),
+            G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,
+			0,
+			NULL,
+			NULL,
+			NULL,
+			G_TYPE_NONE,
+			0);
+
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/stickynote/stickynote-editor-window.ui");
@@ -386,6 +411,7 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 
 	gtk_widget_class_install_action (widget_class, "win.save", NULL, file_saved_action);
 	gtk_widget_class_install_action (widget_class, "win.save-copy", NULL, file_saved_copy_action);
+	gtk_widget_class_install_action (widget_class, "win.export", NULL, emit_export_request_action);
 }
 
 static void

@@ -195,7 +195,10 @@ stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
     StickynoteEditorWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
 
     if (window == NULL)
+    {
         window = stickynote_editor_window_new_full(self->app, metadata, G_CALLBACK(on_stickynote_window_save_note), self);
+        stickynote_editor_window_connect_signal(window, "file-export", G_CALLBACK(stickynote_manager_export_note), metadata);
+    }
     
     gtk_window_present(GTK_WINDOW(window));
 }
