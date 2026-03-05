@@ -82,11 +82,9 @@ send_simple_toast_message (StickynoteEditorWindow *self, const char *message)
 }
 
 static void
-emit_file_saved_signal (StickynoteEditorWindow *self)
+emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
-
-	Metadata *metadata = g_weak_ref_get (&self->metadata);
 	g_return_if_fail (META_IS_DATA (metadata));
 
   	GtkTextIter start;
@@ -187,7 +185,7 @@ on_title_apply (StickynoteEditorWindow *self, GtkButton *button)
 
 	adw_navigation_page_set_title (self->editor_page, title);
 
-	emit_file_saved_signal (self);
+	emit_file_saved_signal (self, metadata);
 }
 
 static void
@@ -228,7 +226,7 @@ file_saved_action (GtkWidget  *widget,
 
 	if (!self->has_unsaved_changes) return; // If there's no changes, return
 
-	emit_file_saved_signal (self);
+	emit_file_saved_signal (self, metadata);
 }
 
 static void
@@ -251,7 +249,7 @@ file_saved_copy_action (GtkWidget  *widget,
 	g_weak_ref_set (&self->metadata, metadata_new); // Update the weak reference to the new metadata object
 	adw_navigation_page_set_title (self->editor_page, title); // Update the title of the editor page
 
-	emit_file_saved_signal (self);
+	emit_file_saved_signal (self, metadata_new);
 }
 
 static void
