@@ -82,20 +82,26 @@ send_simple_toast_message (StickynoteEditorWindow *self, const char *message)
 }
 
 static void
-emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata)
+emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata, gboolean is_original)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
 	g_return_if_fail (META_IS_DATA (metadata));
+
+	if (is_original)
+	{
+		g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, is_original, metadata, NULL);
+		return;
+	}
 
   	GtkTextIter start;
   	GtkTextIter end;
 	gtk_text_buffer_get_bounds (self->text_buffer, &start, &end);
 	const gchar *content = gtk_text_buffer_get_text (self->text_buffer, &start, &end, FALSE);
 
-	metadata_update (metadata, self->last_color_scheme_index, NULL, TRUE); // Also uptate the timestamp
+	metadata_update (metadata, self->last_color_scheme_index, NULL, TRUE);
 
 	gboolean save_result = FALSE;
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, metadata, content, &save_result);
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, is_original, metadata, content, &save_result);
 
 	if (!save_result) // If the signal handler returns FALSE, it means save failed
 	{
@@ -185,7 +191,7 @@ on_title_apply (StickynoteEditorWindow *self, GtkButton *button)
 
 	adw_navigation_page_set_title (self->editor_page, title);
 
-	emit_file_saved_signal (self, metadata);
+	emit_file_saved_signal (self, metadata, FALSE);
 }
 
 static void
@@ -226,7 +232,7 @@ file_saved_action (GtkWidget  *widget,
 
 	if (!self->has_unsaved_changes) return; // If there's no changes, return
 
-	emit_file_saved_signal (self, metadata);
+	emit_file_saved_signal (self, metadata, FALSE);
 }
 
 static void
@@ -236,20 +242,16 @@ file_saved_copy_action (GtkWidget  *widget,
 {
 	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (widget);
 
-	Metadata *metadata_old = g_weak_ref_get (&self->metadata);
-	g_return_if_fail (META_IS_DATA (metadata_old));
+	Metadata *metadata = g_weak_ref_get (&self->metadata);
+	g_return_if_fail (META_IS_DATA (metadata));
+	Metadata *metadata_orig = metadata_copy (metadata);
 
 	const char *title = NULL;
-
-	g_object_set_data(G_OBJECT(metadata_old), "stickynote-editor-window", NULL); // Remove the window from the manager
-
-	Metadata *metadata_new = metadata_copy (metadata_old);
-	g_object_set_data (G_OBJECT(metadata_new), "stickynote-editor-window", self); // Add the window to the new metadata object
-	metadata_get_data (metadata_new, NULL, &title, NULL); // Get the new title
-	g_weak_ref_set (&self->metadata, metadata_new); // Update the weak reference to the new metadata object
+	metadata_get_data (metadata, NULL, &title, NULL); // Get the new title
 	adw_navigation_page_set_title (self->editor_page, title); // Update the title of the editor page
 
-	emit_file_saved_signal (self, metadata_new);
+	emit_file_saved_signal (self, metadata_orig, TRUE); // This is the original file, so we don't need to save
+	emit_file_saved_signal (self, metadata, FALSE); // This is the copy, so we need to save it
 }
 
 static void
@@ -374,7 +376,8 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             NULL,
             NULL,
             G_TYPE_BOOLEAN, // To check whether the file is saved successfully
-            2,
+            3,
+			G_TYPE_BOOLEAN, // To indicate whether the file is original or a copy
             G_TYPE_POINTER, // The metadata pointer
 			G_TYPE_POINTER); // The content pointer
 

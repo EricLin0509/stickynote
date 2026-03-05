@@ -43,7 +43,7 @@ metadata_new(const gchar *path);
 
 /* Copy a metadata object */
 /*
-  *@warning This function only copies the `title` and `color_scheme` fields,
+  *@warning This function copy a metadata object and modify the old one as copy one
 */
 Metadata *
 metadata_copy(Metadata *metadata);

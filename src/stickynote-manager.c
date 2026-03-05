@@ -180,9 +180,17 @@ stickynote_manager_get_notes (StickynoteManager *self)
 }
 
 static gboolean
-on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metadata, const gchar *content, gpointer user_data)
+on_stickynote_window_save_note (StickynoteEditorWindow *window, gboolean is_original, Metadata *metadata, const gchar *content, gpointer user_data)
 {
     StickynoteManager *manager = STICKYNOTE_MANAGER(user_data);
+
+    if (is_original)
+    {
+        const gchar *path = metadata_get_path(metadata);
+        g_hash_table_replace(manager->metadata_table, (void *)path, metadata); // Update the metadata in the manager
+        g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata); // Emit the signal to update the notes list
+        return TRUE; // Do not save the original note, it is already saved in the metadata table.
+    }
 
     return stickynote_manager_save_note(manager, metadata, content);
 }
@@ -229,9 +237,9 @@ stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
 
     if (!metadata_delete_file(metadata)) return FALSE;
 
-    g_hash_table_remove(self->metadata_table, metadata_get_path(metadata));
-
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
+
+    g_hash_table_remove(self->metadata_table, metadata_get_path(metadata));
 
     return TRUE;
 }
