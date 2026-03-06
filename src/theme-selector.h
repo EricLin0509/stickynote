@@ -32,6 +32,9 @@ G_DECLARE_FINAL_TYPE (ThemeSelector, theme_selector, THEME, SELECTOR, GtkWidget)
 ThemeSelector *
 theme_selector_new (void);
 
+void
+theme_selector_set_color_scheme (ThemeSelector *self, int index);
+
 G_END_DECLS
 
 #endif /* THEME_SELECTOR_H */

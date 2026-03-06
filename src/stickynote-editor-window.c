@@ -41,6 +41,7 @@ struct _StickynoteEditorWindow
 	GtkLabel *char_count_label;
 	GtkEmojiChooser *emoji_chooser;
 	GtkMenuButton *editor_menu;
+	ThemeSelector *theme_selector;
 
 	AdwNavigationPage *set_title_page;
 	AdwEntryRow *title_entry;
@@ -294,7 +295,7 @@ stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *m
 	if (metadata_get_content_offset (metadata) > 0)
 		metadata_load_direct (metadata, self->text_buffer);
 
-	gtk_widget_add_css_class (GTK_WIDGET (self), stickynote_color_scheme[color_scheme]);
+	theme_selector_set_color_scheme (self->theme_selector, color_scheme);
 
 	self->last_color_scheme_index = color_scheme;
 	self->has_unsaved_changes = FALSE;
@@ -426,13 +427,13 @@ stickynote_editor_window_init (StickynoteEditorWindow *self)
 
 	GtkPopover *popover = gtk_menu_button_get_popover (self->editor_menu);
 
-	ThemeSelector *theme_selector = theme_selector_new ();
+	self->theme_selector = theme_selector_new ();
 
   	gtk_popover_menu_add_child (GTK_POPOVER_MENU (popover),
-                              GTK_WIDGET (theme_selector),
+                              GTK_WIDGET (self->theme_selector),
                               "theme");
 
-	g_signal_connect (theme_selector, "color-scheme-changed", G_CALLBACK (on_color_scheme_changed_cb), self);
+	g_signal_connect (self->theme_selector, "color-scheme-changed", G_CALLBACK (on_color_scheme_changed_cb), self);
 
 	stickynote_editor_window_connect_signal (self, "close-request", G_CALLBACK (on_stickynote_window_close), NULL);
 }

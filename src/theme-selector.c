@@ -63,6 +63,25 @@ on_checkbutton_toggled (ThemeSelector *selector, GtkCheckButton* self)
     g_signal_emit (selector, theme_selector_signals[COLOR_SCHEME_CHANGED], 0, color_scheme); // Emit signal
 }
 
+void
+theme_selector_set_color_scheme (ThemeSelector *self, int index)
+{
+    g_return_if_fail (index >= 0 && index < COLOR_SCHEME_COUNT && THEME_IS_SELECTOR (self));
+
+    const GtkCheckButton *buttons[] = {
+        self->red,
+        self->orange,
+        self->yellow,
+        self->green,
+        self->blue,
+        self->purple
+    };
+
+    gtk_widget_activate (GTK_WIDGET (buttons[index]));
+
+    g_signal_emit (self, theme_selector_signals[COLOR_SCHEME_CHANGED], 0, index); // Emit signal
+}
+
 static void
 theme_selector_dispose (GObject *object)
 {
