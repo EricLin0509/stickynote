@@ -193,11 +193,10 @@ stickynote_window_open_note (StickynoteWindow *self, gpointer user_data)
 	Metadata *data = NULL;
 
 	if (STICKYNOTE_IS_ROW (action_widget)) // User clicked the row, get the metadata from the row.
+	{
 		data = g_object_get_data (G_OBJECT (action_widget), "metadata");
-	else if (GTK_IS_BUTTON (action_widget)) // User clicked the 'New' button, create a new note.
-		data = metadata_new (NULL);
-
-	g_return_if_fail (data != NULL); // Check if the data is valid
+		g_return_if_fail (data != NULL); // Check if the data is valid
+	}
 
 	stickynote_manager_edit_note (manager, data);
 }

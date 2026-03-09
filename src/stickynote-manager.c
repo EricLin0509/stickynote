@@ -199,7 +199,9 @@ on_stickynote_window_save_note (StickynoteEditorWindow *window, gboolean is_orig
 void
 stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
 {
-    g_return_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata));
+    g_return_if_fail(STICKYNOTE_IS_MANAGER(self));
+
+    if (metadata == NULL) metadata = metadata_new (NULL); // Create a new metadata object if it is NULL
 
     StickynoteEditorWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
 
