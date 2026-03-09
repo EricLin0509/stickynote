@@ -298,6 +298,7 @@ stickynote_window_new (GApplication *app, StickynoteManager *manager)
 	g_weak_ref_init (&self->manager, manager);
 	self->note_changed_id = g_signal_connect (manager, "note-changed", G_CALLBACK (handle_note_manager_changed), self);
 	stickynote_manager_get_notes (manager);
+	stickynote_window_show_note_status (self);
 
 	return GTK_WINDOW (self);
 }

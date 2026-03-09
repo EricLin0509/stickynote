@@ -135,7 +135,6 @@ static void
 stickynote_application_init (StickynoteApplication *self)
 {
 	self->manager = stickynote_manager_new (G_APPLICATION (self));
-	stickynote_manager_init_notes (self->manager);
 
 	g_action_map_add_action_entries (G_ACTION_MAP (self),
 	                                 app_actions,

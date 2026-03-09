@@ -136,8 +136,7 @@ stickynote_manager_new (GApplication *app)
     return g_object_new(STICKYNOTE_TYPE_MANAGER, "app", app, NULL);
 }
 
-/* This function may be use to implement a real-time update of the notes list, but it is not necessary for now. */
-void
+static void
 stickynote_manager_init_notes (StickynoteManager *self)
 {
     g_return_if_fail(STICKYNOTE_IS_MANAGER(self));
@@ -359,5 +358,7 @@ static void
 stickynote_manager_init(StickynoteManager *self)
 {
     self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_object_unref);
+
+    stickynote_manager_init_notes (self);
 }
 

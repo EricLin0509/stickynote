@@ -40,14 +40,6 @@ G_DECLARE_FINAL_TYPE (StickynoteManager, stickynote_manager, STICKYNOTE, MANAGER
 StickynoteManager *
 stickynote_manager_new (GApplication *app);
 
-/* initialize the notes from the database */
-/*
-  * This function is used to initialize the notes from the database and update the UI
-  * with the notes.
-*/
-void
-stickynote_manager_init_notes (StickynoteManager *self);
-
 /* get all notes from the database */
 /*
   * Simliar to `stickynote_manager_init_notes`, but this function is used to
