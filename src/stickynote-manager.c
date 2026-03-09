@@ -153,8 +153,9 @@ stickynote_manager_init_notes (StickynoteManager *self)
 	while ((file_name = g_dir_read_name (dir)) != NULL)
 	{
 		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
-		Metadata *data = metadata_new (path);
+        if (!g_str_has_suffix (file_name, ".md")) continue; // Ignore non-markdown files
 
+		Metadata *data = metadata_new (path);
 		if (data == NULL) continue; // Ignore invalid files
 
         g_hash_table_insert(self->metadata_table, path, data);
