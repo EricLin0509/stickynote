@@ -67,9 +67,7 @@ ensure_directories_exist (const gchar *dir_path)
 
 	g_warning ("Directory %s does not exist, creating...", dir_path);
 
-	g_mkdir_with_parents (dir_path, 0755);
-
-	return TRUE;
+	return g_mkdir_with_parents (dir_path, 0755) != -1;
 }
 
 static char *
@@ -136,17 +134,17 @@ stickynote_manager_new (GApplication *app)
     return g_object_new(STICKYNOTE_TYPE_MANAGER, "app", app, NULL);
 }
 
-static void
+static gboolean
 stickynote_manager_init_notes (StickynoteManager *self)
 {
-    g_return_if_fail(STICKYNOTE_IS_MANAGER(self));
+    g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self), FALSE);
 
 	gboolean is_valid_dir;
 	g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
-	if (notes_dir == NULL || !is_valid_dir) return;
+	if (notes_dir == NULL || !is_valid_dir) return FALSE;
 
 	GDir *dir = g_dir_open (notes_dir, 0, NULL);
-	if (dir == NULL) return;
+	if (dir == NULL) return FALSE;
 
 	const gchar *file_name;
 	while ((file_name = g_dir_read_name (dir)) != NULL)
@@ -160,6 +158,10 @@ stickynote_manager_init_notes (StickynoteManager *self)
         g_hash_table_insert(self->metadata_table, path, data);
         g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_LOAD, data);
     }
+
+    g_dir_close (dir);
+
+    return TRUE;
 }
 
 void
@@ -359,6 +361,10 @@ stickynote_manager_init(StickynoteManager *self)
 {
     self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_object_unref);
 
-    stickynote_manager_init_notes (self);
+    if (!stickynote_manager_init_notes (self))
+    {
+        g_critical ("Failed to initialize notes");
+        return;
+    }
 }
 
