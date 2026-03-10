@@ -19,6 +19,7 @@
  */
 
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "stickynote-manager.h"
 
@@ -239,7 +240,7 @@ stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
     if (GTK_IS_WINDOW(window))
         gtk_window_destroy(window); // Destroy the editor window if it is open
 
-    if (!metadata_delete_file(metadata)) return FALSE;
+    if (!metadata_delete_file(metadata) && errno != ENOENT) return FALSE; // Ignore the error if the file does not exist
 
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
 

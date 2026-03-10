@@ -66,7 +66,11 @@ metadata_get_content_offset(Metadata *metadata);
 
 /* Load the content from the metadata file */
 gchar *
-metadata_load(Metadata *metadata);
+metadata_load(Metadata *metadata, ssize_t *content_size);
+
+/* Unload the content from the metadata file */
+void
+metadata_unload(Metadata *metadata, gchar **content, ssize_t content_size);
 
 /* Load the content directly to the GtkTextBuffer */
 void

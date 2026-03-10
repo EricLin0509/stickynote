@@ -79,7 +79,7 @@ static ssize_t
 get_file_size(int file_fd)
 {
     struct stat file_stat;
-    if (fstat(file_fd, &file_stat) < 0) // Get actual file size
+    if (fstat(file_fd, &file_stat) < 0 || !S_ISREG(file_stat.st_mode)) // If failed to get file stat or it is not a regular file, return -1
     {
         g_critical("Failed to get file stat");
         return -1;
@@ -284,25 +284,28 @@ metadata_get_content_offset(Metadata *metadata)
 
 /* Load the content from the metadata file */
 gchar *
-metadata_load(Metadata *metadata)
+metadata_load(Metadata *metadata, ssize_t *content_size)
 {
     g_return_val_if_fail(metadata != NULL && metadata->path != NULL, NULL);
 
-    int file_fd = open(metadata->path, O_RDONLY);
+    ssize_t file_size = 0;
+    ssize_t *file_size_ptr = content_size ? content_size : &file_size;
+
+    int file_fd = open(metadata->path, O_RDONLY | O_CREAT, 0644); // `O_CREAT` to create file if it doesn't exist
     if (file_fd < 0)
     {
         g_critical("Failed to open file: %s", metadata->path);
         return NULL;
     }
 
-    ssize_t file_size = get_file_size(file_fd);
-    if (file_size == -1)
+    *file_size_ptr = get_file_size(file_fd);
+    if (*file_size_ptr == -1)
     {
         close(file_fd);
         return NULL;
     }
 
-    char *file_content = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, file_fd, 0);
+    char *file_content = mmap(NULL, *file_size_ptr, PROT_READ, MAP_PRIVATE, file_fd, 0);
     if (file_content == MAP_FAILED)
     {
         g_critical("Failed to mmap file: %s", metadata->path);
@@ -310,12 +313,22 @@ metadata_load(Metadata *metadata)
         return NULL;
     }
 
-    gchar *content = g_strndup(file_content + metadata->content_offset, file_size - metadata->content_offset);
-
-    munmap(file_content, file_size);
+    gchar *content = file_content + metadata->content_offset;
+    *file_size_ptr -= metadata->content_offset; // Adjust the content size to exclude the metadata
     close(file_fd);
 
     return content;
+}
+
+void
+metadata_unload(Metadata *metadata, gchar **content, ssize_t content_size)
+{
+    g_return_if_fail(metadata != NULL && content != NULL && *content != NULL);
+
+    ssize_t total_size = content_size + metadata->content_offset; // Add the content offset to the content size
+    void *head = *content - metadata->content_offset; // Get the head of the content
+    munmap(head, total_size); // Unmap the content
+    *content = NULL;
 }
 
 /* Load the content directly to the GtkTextBuffer */
@@ -324,32 +337,12 @@ metadata_load_direct(Metadata *metadata, GtkTextBuffer *buffer)
 {
     g_return_if_fail(metadata != NULL && metadata->path != NULL && buffer != NULL);
 
-    int file_fd = open(metadata->path, O_RDONLY);
-    if (file_fd < 0)
-    {
-        g_critical("Failed to open file: %s", metadata->path);
-        return;
-    }
+    ssize_t content_size = 0;
+    gchar *content = metadata_load(metadata, &content_size);
+    if (content == NULL) return;
 
-    ssize_t file_size = get_file_size(file_fd);
-    if (file_size == -1)
-    {
-        close(file_fd);
-        return;
-    }
-
-    char *file_content = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, file_fd, 0);
-    if (file_content == MAP_FAILED)
-    {
-        g_critical("Failed to mmap file: %s", metadata->path);
-        close(file_fd);
-        return;
-    }
-
-    gtk_text_buffer_set_text(buffer, file_content + metadata->content_offset, file_size - metadata->content_offset);
-
-    munmap(file_content, file_size);
-    close(file_fd);
+    gtk_text_buffer_set_text(buffer, content, content_size);
+    metadata_unload(metadata, &content, content_size);
 }
 
 gboolean
