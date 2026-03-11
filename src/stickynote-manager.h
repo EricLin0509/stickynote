@@ -21,6 +21,7 @@
 #include <adwaita.h>
 
 #include "metadata.h"
+#include "file-operations-status.h"
 
 #ifndef STICKYNOTE_MANAGER_H
 #define STICKYNOTE_MANAGER_H
@@ -51,10 +52,10 @@ stickynote_manager_get_notes (StickynoteManager *self);
 void
 stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata);
 
-gboolean
+FileOperationStatus
 stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const char *content);
 
-gboolean
+FileOperationStatus
 stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata);
 
 void

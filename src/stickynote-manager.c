@@ -105,22 +105,19 @@ get_note_dir_realpath (gboolean *is_directory)
 	return g_steal_pointer (&realpath);
 }
 
-static gboolean
+static FileOperationStatus
 save_metadata_to_file (Metadata *data, const gchar *content)
 {
 	if (metadata_get_path (data) == NULL)
 	{
 		gboolean is_valid_dir;
 		g_autofree gchar *notes_dir = get_note_dir_realpath (&is_valid_dir);
-		if (notes_dir == NULL || !is_valid_dir) return FALSE;
+		if (notes_dir == NULL || !is_valid_dir) return FILE_OPERATION_FAILURE;
 		g_autofree gchar *file_name = metadata_build_file_name (data);
 		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
 
         if (g_file_test(path, G_FILE_TEST_EXISTS))
-        {
-            g_critical ("File already exists: %s", path);
-            return FALSE;
-        }
+            return FILE_OPERATION_FILE_EXISTS;
 
 		metadata_set_path (data, path);
 	}
@@ -128,10 +125,10 @@ save_metadata_to_file (Metadata *data, const gchar *content)
 	if (!metadata_save (data, content))
 	{
 		g_critical ("Failed to save file");
-		return FALSE;
+		return FILE_OPERATION_FAILURE;
 	}
 
-	return TRUE;
+	return FILE_OPERATION_SUCCESS;
 }
 
 /* ==== StickynoteManager ==== */
@@ -190,17 +187,9 @@ stickynote_manager_get_notes (StickynoteManager *self)
 }
 
 static gboolean
-on_stickynote_window_save_note (StickynoteEditorWindow *window, gboolean is_original, Metadata *metadata, const gchar *content, gpointer user_data)
+on_stickynote_window_save_note (StickynoteEditorWindow *window, Metadata *metadata, const gchar *content, gpointer user_data)
 {
     StickynoteManager *manager = STICKYNOTE_MANAGER(user_data);
-
-    if (is_original)
-    {
-        const gchar *path = metadata_get_path(metadata);
-        g_hash_table_replace(manager->metadata_table, (void *)path, metadata); // Update the metadata in the manager
-        g_signal_emit(manager, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata); // Emit the signal to update the notes list
-        return TRUE; // Do not save the original note, it is already saved in the metadata table.
-    }
 
     return stickynote_manager_save_note(manager, metadata, content);
 }
@@ -223,37 +212,39 @@ stickynote_manager_edit_note (StickynoteManager *self, Metadata *metadata)
     gtk_window_present(GTK_WINDOW(window));
 }
 
-gboolean
+FileOperationStatus
 stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const gchar *content)
 {
-    g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FALSE);
+    g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FILE_OPERATION_FAILURE);
 
-    if (!save_metadata_to_file(metadata, content)) return FALSE;
+    FileOperationStatus status = save_metadata_to_file(metadata, content);
 
-    const gchar *path = metadata_get_path(metadata);
-    g_hash_table_replace(self->metadata_table, (void *)path, metadata); // Update the metadata in the manager
+    if (status == FILE_OPERATION_SUCCESS)
+    {
+        const gchar *path = metadata_get_path(metadata);
+        g_hash_table_replace(self->metadata_table, (void *)path, metadata); // Update the metadata in the manager
+        g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
+    }
 
-    g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
-
-    return TRUE;
+    return status;
 }
 
-gboolean
+FileOperationStatus
 stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
 {
-    g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FALSE);
+    g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FILE_OPERATION_FAILURE);
 
     GtkWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
     if (GTK_IS_WINDOW(window))
         gtk_window_destroy(window); // Destroy the editor window if it is open
 
-    if (!metadata_delete_file(metadata) && errno != ENOENT) return FALSE; // Ignore the error if the file does not exist
+    if (!metadata_delete_file(metadata) && errno != ENOENT) return FILE_OPERATION_FAILURE; // Ignore the error if the file does not exist
 
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
 
     g_hash_table_remove(self->metadata_table, metadata_get_path(metadata));
 
-    return TRUE;
+    return FILE_OPERATION_SUCCESS;
 }
 
 static void

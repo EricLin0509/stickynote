@@ -32,6 +32,11 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE(Metadata, metadata, META, DATA, GObject)
 
+typedef enum {
+    METADATA_RESET_TITLE = 0x01,
+    METADATA_RESET_COLOR_SCHEME = 0x02
+} MetadataResetFlags;
+
 /* Create a new metadata object from a file path */
 /*
  * @param path The file path to the metadata file
@@ -40,6 +45,14 @@ G_DECLARE_FINAL_TYPE(Metadata, metadata, META, DATA, GObject)
 */
 Metadata *
 metadata_new(const gchar *path);
+
+/* Reset the metadata object */
+/*
+  *@param metadata The metadata object to reset
+  *@param reset_flags The flags to reset the metadata object
+*/
+void
+metadata_reset(Metadata *metadata, MetadataResetFlags reset_flags);
 
 /* Build a file name */
 gchar *

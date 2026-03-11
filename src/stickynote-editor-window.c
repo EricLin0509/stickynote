@@ -25,6 +25,8 @@
 #define COLOR_SCHEME_IMPLEMENTATION /* For One file header */
 #include "color-scheme.h"
 
+#include "file-operations-status.h"
+
 #include "stickynote-editor-window.h"
 #include "theme-selector.h"
 
@@ -83,16 +85,10 @@ send_simple_toast_message (StickynoteEditorWindow *self, const char *message)
 }
 
 static void
-emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata, gboolean is_original)
+emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
 	g_return_if_fail (META_IS_DATA (metadata));
-
-	if (is_original)
-	{
-		g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, is_original, metadata, NULL);
-		return;
-	}
 
   	GtkTextIter start;
   	GtkTextIter end;
@@ -101,18 +97,36 @@ emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata, gboole
 
 	metadata_update (metadata, self->last_color_scheme_index, NULL, TRUE);
 
-	gboolean save_result = FALSE;
-	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, is_original, metadata, content, &save_result);
+	FileOperationStatus save_result = 0;
+	g_signal_emit (self, stickynote_editor_window_signals[FILE_SAVED], 0, metadata, content, &save_result);
 
-	if (!save_result) // If the signal handler returns FALSE, it means save failed
+	const char *title = NULL;
+	metadata_get_data (metadata, NULL, &title, NULL);
+
+	switch (save_result)
 	{
-		send_simple_toast_message (self, gettext ("Failed to save the note"));
-		return;
-	}
+		case FILE_OPERATION_SUCCESS:
+			self->has_unsaved_changes = FALSE; // Mark the file as saved
+			gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", TRUE);
 
-	self->has_unsaved_changes = FALSE; // Mark the file as saved
-	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", TRUE);
-	send_simple_toast_message (self, gettext ("Note saved successfully"));
+			if (adw_navigation_view_get_visible_page (self->navigation_view) == self->set_title_page)
+				adw_navigation_view_pop (self->navigation_view);
+			adw_navigation_page_set_title (self->editor_page, title);
+
+			send_simple_toast_message (self, gettext ("Note saved successfully"));
+			break;
+		case FILE_OPERATION_FAILURE:
+			send_simple_toast_message (self, gettext ("Failed to save note"));
+			break;
+		case FILE_OPERATION_FILE_EXISTS:
+			g_autofree gchar *message = g_strdup_printf (gettext ("Note \"%s\" already exists"), title);
+			send_simple_toast_message (self, message);
+			metadata_reset (metadata, METADATA_RESET_TITLE); // Reset the title if the file already exists
+			break;
+		default:
+			g_critical ("Unknown file operation status: %d", save_result);
+			break;
+	}
 }
 
 static void
@@ -187,11 +201,7 @@ on_title_apply (StickynoteEditorWindow *self, GtkButton *button)
 
 	metadata_update (metadata, -1, title, FALSE);
 
-	adw_navigation_view_pop (self->navigation_view);
-
-	adw_navigation_page_set_title (self->editor_page, title);
-
-	emit_file_saved_signal (self, metadata, FALSE);
+	emit_file_saved_signal (self, metadata);
 }
 
 static void
@@ -232,7 +242,7 @@ file_saved_action (GtkWidget  *widget,
 
 	if (!self->has_unsaved_changes) return; // If there's no changes, return
 
-	emit_file_saved_signal (self, metadata, FALSE);
+	emit_file_saved_signal (self, metadata);
 }
 
 static void
@@ -353,9 +363,8 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
             NULL,
             NULL,
             NULL,
-            G_TYPE_BOOLEAN, // To check whether the file is saved successfully
-            3,
-			G_TYPE_BOOLEAN, // To indicate whether the file is original or a copy
+            G_TYPE_INT, // To check whether the file is saved successfully
+            2,
             G_TYPE_POINTER, // The metadata pointer
 			G_TYPE_POINTER); // The content pointer
 

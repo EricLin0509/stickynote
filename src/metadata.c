@@ -300,6 +300,7 @@ metadata_load(Metadata *metadata, ssize_t *content_size)
 
     gchar *content = file_content + metadata->content_offset;
     *file_size_ptr -= metadata->content_offset; // Adjust the content size to exclude the metadata
+    g_return_val_if_fail(*file_size_ptr >= 0, NULL); // Ensure the content size is non-negative
     close(file_fd);
 
     return content;
@@ -308,7 +309,7 @@ metadata_load(Metadata *metadata, ssize_t *content_size)
 void
 metadata_unload(Metadata *metadata, gchar **content, ssize_t content_size)
 {
-    g_return_if_fail(metadata != NULL && content != NULL && *content != NULL);
+    g_return_if_fail(metadata != NULL && content != NULL && *content != NULL && content_size >= 0);
 
     ssize_t total_size = content_size + metadata->content_offset; // Add the content offset to the content size
     void *head = *content - metadata->content_offset; // Get the head of the content
@@ -560,4 +561,16 @@ metadata_new(const gchar *path)
     }
 
     return metadata;
+}
+
+void
+metadata_reset(Metadata *metadata, MetadataResetFlags reset_flags)
+{
+    g_return_if_fail(metadata != NULL);
+
+    if (reset_flags & METADATA_RESET_TITLE)
+        g_clear_pointer((void **)(&(metadata)->title), g_free);
+
+    if (reset_flags & METADATA_RESET_COLOR_SCHEME)
+        metadata->color_scheme = -1;
 }
