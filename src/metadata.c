@@ -63,6 +63,7 @@ typedef struct ParserContext {
     Metadata *metadata;
     
     ParserState state;
+    unsigned short line_number;
     unsigned short parsed_mask;
 } ParserContext;
 
@@ -126,6 +127,8 @@ handle_state_start(ParserContext *context, char **line)
 static void
 handle_state_metadata(ParserContext *context, char **line)
 {
+    context->line_number++;
+
     if ((context->parsed_mask & TIMESTAMP_PARSED_MASK) == 0 && // Only parse timestamp if not parsed yet
         (strstr(*line, TIMESTAMP_METADATA_STRING) == *line))
     {
@@ -214,7 +217,7 @@ parse_metadata(ParserContext *context, const char *path)
 
     char *line_start = file_content;
 
-    while (context->state != STATE_END && line_start < file_content + file_size)
+    while (context->state != STATE_END && context->line_number <= 50 && line_start < file_content + file_size) // Limit the maximum header lines to 50
     {
         switch (context->state)
         {
