@@ -106,7 +106,7 @@ get_note_dir_realpath (gboolean *is_directory)
 }
 
 static FileOperationStatus
-save_metadata_to_file (Metadata *data, const gchar *content)
+save_metadata_to_file (StickynoteManager *self, Metadata *data, const gchar *content)
 {
 	if (metadata_get_path (data) == NULL)
 	{
@@ -115,8 +115,8 @@ save_metadata_to_file (Metadata *data, const gchar *content)
 		if (notes_dir == NULL || !is_valid_dir) return FILE_OPERATION_FAILURE;
 		g_autofree gchar *file_name = metadata_build_file_name (data);
 		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
-
-        if (g_file_test(path, G_FILE_TEST_EXISTS))
+        Metadata *existing_data = g_hash_table_lookup(self->metadata_table, path);
+        if (existing_data != NULL && existing_data != data) // If the file already exists, we will not overwrite it
             return FILE_OPERATION_FILE_EXISTS;
 
 		metadata_set_path (data, path);
@@ -154,7 +154,7 @@ stickynote_manager_init_notes (StickynoteManager *self)
 	const gchar *file_name;
 	while ((file_name = g_dir_read_name (dir)) != NULL)
 	{
-		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+		gchar *path = g_build_filename (notes_dir, file_name, NULL);
         if (!g_str_has_suffix (file_name, ".md")) continue; // Ignore non-markdown files
 
 		Metadata *data = metadata_new (path);
@@ -217,12 +217,12 @@ stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const
 {
     g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FILE_OPERATION_FAILURE);
 
-    FileOperationStatus status = save_metadata_to_file(metadata, content);
+    FileOperationStatus status = save_metadata_to_file(self, metadata, content);
 
     if (status == FILE_OPERATION_SUCCESS)
     {
         const gchar *path = metadata_get_path(metadata);
-        g_hash_table_replace(self->metadata_table, (void *)path, metadata); // Update the metadata in the manager
+        g_hash_table_replace(self->metadata_table, (void *)g_strdup(path), metadata); // Update the metadata in the manager
         g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
     }
 
@@ -358,7 +358,7 @@ stickynote_manager_class_init(StickynoteManagerClass *klass)
 static void
 stickynote_manager_init(StickynoteManager *self)
 {
-    self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_object_unref);
+    self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
 
     if (!stickynote_manager_init_notes (self))
     {

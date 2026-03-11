@@ -79,7 +79,7 @@ send_simple_toast_message (StickynoteEditorWindow *self, const char *message)
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
 
 	AdwToast *toast = adw_toast_new (message);
-	adw_toast_set_timeout (toast, 5); // 5 seconds timeout
+	adw_toast_set_timeout (toast, 3); // 3 seconds timeout
 
 	adw_toast_overlay_add_toast (self->toast_overlay, toast);
 }
