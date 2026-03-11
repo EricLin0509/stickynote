@@ -33,13 +33,11 @@
 
 /* Keyswords for metadata */
 #define TIMESTAMP_METADATA_STRING "date"
-#define TITLE_METADATA_STRING "title"
 #define COLOR_SCHEME_METADATA_STRING "color_scheme"
 
 /* Parser bismasks */
 #define TIMESTAMP_PARSED_MASK 0x01
-#define TITLE_PARSED_MASK 0x02
-#define COLOR_SCHEME_PARSED_MASK 0x04
+#define COLOR_SCHEME_PARSED_MASK 0x02
 
 struct _Metadata {
     GObject parent_instance;
@@ -57,7 +55,6 @@ typedef enum {
     STATE_START,
     STATE_METADATA,
     STATE_METADATA_TIMESTAMP,
-    STATE_METADATA_TITLE,
     STATE_METADATA_COLOR_SCHEME,
     STATE_END
 } ParserState;
@@ -99,6 +96,17 @@ skip_line(char **line)
     else *line = line_end + 1; // Skip the line
 }
 
+/* Get the title from the path */
+static gchar *
+get_title_from_path(const char *path)
+{
+    GFile *file = g_file_new_for_path(path);
+    g_autofree gchar *file_name = g_file_get_basename(file);
+    g_object_unref(file);
+    const gchar *end = strrchr(file_name, '.'); // Exclude the file extension
+    return g_strndup(file_name, end - file_name); // Set the title to the file name without extension
+}
+
 /* Handle `STATE_START` state */
 static void
 handle_state_start(ParserContext *context, char **line)
@@ -122,12 +130,6 @@ handle_state_metadata(ParserContext *context, char **line)
         (strstr(*line, TIMESTAMP_METADATA_STRING) == *line))
     {
         context->state = STATE_METADATA_TIMESTAMP;
-        return;
-    }
-    else if ((context->parsed_mask & TITLE_PARSED_MASK) == 0 &&
-        (strstr(*line, TITLE_METADATA_STRING) == *line))
-    {
-        context->state = STATE_METADATA_TITLE;
         return;
     }
     else if ((context->parsed_mask & COLOR_SCHEME_PARSED_MASK) == 0 &&
@@ -162,22 +164,6 @@ handle_state_metadata_timestamp(ParserContext *context, char **line)
     context->state = STATE_METADATA;
 }
 
-/* Handle `STATE_METADATA_TITLE` state */
-static void
-handle_state_metadata_title(ParserContext *context, char **line)
-{
-    g_return_if_fail(context != NULL);
-
-    *line += strlen(TITLE_METADATA_STRING) + 1;
-    skip_whitespace(line);
-    char *title_end = strchr(*line, '\n');
-    context->metadata->title = g_strndup(*line, title_end - *line);
-    *line = title_end + 1;
-
-    context->parsed_mask |= TITLE_PARSED_MASK;
-    context->state = STATE_METADATA;
-}
-
 /* Handle `STATE_METADATA_COLOR_SCHEME` state */
 static void
 handle_state_metadata_color_scheme(ParserContext *context, char **line)
@@ -198,6 +184,8 @@ static gboolean
 parse_metadata(ParserContext *context, const char *path)
 {
     g_return_val_if_fail(context != NULL && path != NULL, FALSE);
+
+    context->metadata->title = get_title_from_path(path);
 
     metadata_set_path(context->metadata, path);
 
@@ -239,9 +227,6 @@ parse_metadata(ParserContext *context, const char *path)
             case STATE_METADATA_TIMESTAMP:
                 handle_state_metadata_timestamp(context, &line_start);
                 break;
-            case STATE_METADATA_TITLE:
-                handle_state_metadata_title(context, &line_start);
-                break;
             case STATE_METADATA_COLOR_SCHEME:
                 handle_state_metadata_color_scheme(context, &line_start);
                 break;
@@ -272,7 +257,7 @@ metadata_build_file_name(Metadata *metadata)
     if (metadata->title == NULL)
         metadata->title = g_strdup("Untitled"); // Set default title if it is NULL
 
-    return g_strdup_printf("%s_%s.md", metadata->timestamp, metadata->title);
+    return g_strdup_printf("%s.md", metadata->title);
 }
 
 /* Get the content offset of the metadata file */
@@ -419,9 +404,8 @@ metadata_save(Metadata *metadata, const gchar *content)
         return FALSE;
     }
 
-    char *header_content = g_strdup_printf("---\n%s: %s\n%s: %s\n%s: %d\n---\n",
+    char *header_content = g_strdup_printf("---\n%s: %s\n%s: %d\n---\n",
                                              TIMESTAMP_METADATA_STRING, metadata->timestamp,
-                                             TITLE_METADATA_STRING, metadata->title,
                                              COLOR_SCHEME_METADATA_STRING, metadata->color_scheme);
     int header_size = strlen(header_content);
     metadata->content_offset = header_size; // Set the content offset to the end of the header
