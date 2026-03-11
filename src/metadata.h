@@ -41,13 +41,6 @@ G_DECLARE_FINAL_TYPE(Metadata, metadata, META, DATA, GObject)
 Metadata *
 metadata_new(const gchar *path);
 
-/* Copy a metadata object */
-/*
-  *@warning This function copy a metadata object and modify the old one as copy one
-*/
-Metadata *
-metadata_copy(Metadata *metadata);
-
 /* Build a file name */
 gchar *
 metadata_build_file_name(Metadata *metadata);

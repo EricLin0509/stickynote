@@ -115,6 +115,13 @@ save_metadata_to_file (Metadata *data, const gchar *content)
 		if (notes_dir == NULL || !is_valid_dir) return FALSE;
 		g_autofree gchar *file_name = metadata_build_file_name (data);
 		g_autofree gchar *path = g_build_filename (notes_dir, file_name, NULL);
+
+        if (g_file_test(path, G_FILE_TEST_EXISTS))
+        {
+            g_critical ("File already exists: %s", path);
+            return FALSE;
+        }
+
 		metadata_set_path (data, path);
 	}
 

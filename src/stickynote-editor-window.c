@@ -111,7 +111,6 @@ emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata, gboole
 	}
 
 	self->has_unsaved_changes = FALSE; // Mark the file as saved
-	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", TRUE);
 	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", TRUE);
 	send_simple_toast_message (self, gettext ("Note saved successfully"));
 }
@@ -237,25 +236,6 @@ file_saved_action (GtkWidget  *widget,
 }
 
 static void
-file_saved_copy_action (GtkWidget  *widget,
-								const char *action_name,
-                                GVariant      *parameter)
-{
-	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (widget);
-
-	Metadata *metadata = g_weak_ref_get (&self->metadata);
-	g_return_if_fail (META_IS_DATA (metadata));
-	Metadata *metadata_orig = metadata_copy (metadata);
-
-	const char *title = NULL;
-	metadata_get_data (metadata, NULL, &title, NULL); // Get the new title
-	adw_navigation_page_set_title (self->editor_page, title); // Update the title of the editor page
-
-	emit_file_saved_signal (self, metadata_orig, TRUE); // This is the original file, so we don't need to save
-	emit_file_saved_signal (self, metadata, FALSE); // This is the copy, so we need to save it
-}
-
-static void
 emit_export_request_action (GtkWidget  *widget,
 								const char *action_name,
                                 GVariant      *parameter)
@@ -274,10 +254,7 @@ stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *m
 	g_weak_ref_set (&self->metadata, metadata);
 
 	if (metadata_get_path (metadata) == NULL)
-	{
-		gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.save-copy", FALSE);
 		gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", FALSE);
-	}
 
 	const char *title = NULL;
 	int color_scheme = -1;
@@ -412,7 +389,6 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, save_button);
 
 	gtk_widget_class_install_action (widget_class, "win.save", NULL, file_saved_action);
-	gtk_widget_class_install_action (widget_class, "win.save-copy", NULL, file_saved_copy_action);
 	gtk_widget_class_install_action (widget_class, "win.export", NULL, emit_export_request_action);
 }
 

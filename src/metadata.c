@@ -561,23 +561,3 @@ metadata_new(const gchar *path)
 
     return metadata;
 }
-
-Metadata *
-metadata_copy(Metadata *metadata)
-{
-    g_return_val_if_fail(metadata != NULL, NULL);
-
-    Metadata *copy = g_object_new(TYPE_METADATA, NULL);
-
-    copy->color_scheme = metadata->color_scheme;
-    copy->title = metadata->title;
-    copy->timestamp = metadata->timestamp;
-    copy->path = metadata->path;
-    copy->content_offset = metadata->content_offset;
-
-    metadata->path = NULL;
-    metadata->timestamp = NULL;
-    metadata->title = g_strdup_printf(gettext("%s (Copy)"), metadata->title);
-
-    return copy;
-}
