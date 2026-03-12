@@ -156,7 +156,8 @@ gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 	}
 	else
 	{
-		title = gettext ("Untitled");
+		metadata_get_data (data, NULL, &title, NULL); // If the metadata is corrupted, only show the title.
+		if (title == NULL || *title == '\0') title = gettext ("Untitled");
 		date_str = g_strdup (gettext ("Corrupted note"));
 	}
 
