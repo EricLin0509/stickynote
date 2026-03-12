@@ -29,6 +29,7 @@ struct _StickynoteManager {
     AdwBin parent_instance;
 
     GHashTable *metadata_table;
+    GMutex metadata_table_lock;
 
     GApplication *app;
 };
@@ -217,6 +218,8 @@ stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const
 {
     g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FILE_OPERATION_FAILURE);
 
+    g_mutex_lock(&self->metadata_table_lock);
+
     FileOperationStatus status = save_metadata_to_file(self, metadata, content);
 
     if (status == FILE_OPERATION_SUCCESS)
@@ -226,6 +229,8 @@ stickynote_manager_save_note (StickynoteManager *self, Metadata *metadata, const
         g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_SAVE, metadata);
     }
 
+    g_mutex_unlock(&self->metadata_table_lock);
+
     return status;
 }
 
@@ -234,15 +239,23 @@ stickynote_manager_delete_note (StickynoteManager *self, Metadata *metadata)
 {
     g_return_val_if_fail(STICKYNOTE_IS_MANAGER(self) && META_IS_DATA (metadata), FILE_OPERATION_FAILURE);
 
+    g_mutex_lock(&self->metadata_table_lock);
+
     GtkWindow *window = g_object_get_data(G_OBJECT(metadata), "stickynote-editor-window");
     if (GTK_IS_WINDOW(window))
         gtk_window_destroy(window); // Destroy the editor window if it is open
 
-    if (!metadata_delete_file(metadata) && errno != ENOENT) return FILE_OPERATION_FAILURE; // Ignore the error if the file does not exist
+    if (!metadata_delete_file(metadata) && errno != ENOENT)
+    {
+        g_mutex_unlock(&self->metadata_table_lock);
+        return FILE_OPERATION_FAILURE; // Ignore the error if the file does not exist
+    }
 
     g_signal_emit(self, manager_signals[NOTE_CHANGED], 0, STICKYNOTE_MANAGER_MODE_DELETE, metadata);
 
     g_hash_table_remove(self->metadata_table, metadata_get_path(metadata));
+
+    g_mutex_unlock(&self->metadata_table_lock);
 
     return FILE_OPERATION_SUCCESS;
 }
@@ -327,6 +340,8 @@ stickynote_manager_dispose(GObject *object)
     g_hash_table_remove_all(self->metadata_table);
     g_clear_pointer(&self->metadata_table, g_hash_table_unref);
 
+    g_mutex_clear(&self->metadata_table_lock);
+
     G_OBJECT_CLASS(stickynote_manager_parent_class)->dispose(object);
 }
 
@@ -359,6 +374,8 @@ static void
 stickynote_manager_init(StickynoteManager *self)
 {
     self->metadata_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
+
+    g_mutex_init(&self->metadata_table_lock);
 
     if (!stickynote_manager_init_notes (self))
     {

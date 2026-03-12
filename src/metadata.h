@@ -46,6 +46,10 @@ typedef enum {
 Metadata *
 metadata_new(const gchar *path);
 
+/* Check metadata integrity */
+gboolean
+metadata_check_integrity(Metadata *metadata);
+
 /* Reset the metadata object */
 /*
   *@param metadata The metadata object to reset

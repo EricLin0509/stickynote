@@ -144,18 +144,20 @@ gtk_list_box_update_rows (StickynoteWindow *self, Metadata *data)
 
 	const char *title = NULL;
 	const char *timestamp = NULL;
-	int color_scheme = 0;
-	metadata_get_data (data, &color_scheme, &title, &timestamp);
-
-	if (title == NULL || *title == '\0') // If the title is empty, set it to "Untitled"
-		title = gettext ("Untitled");
-
-	int year, month, day, hour, minute, second;
+	int color_scheme = -1;
 	g_autofree gchar *date_str = NULL;
-	if (timestamp != NULL)
+
+	if (metadata_check_integrity (data))
 	{
+		metadata_get_data (data, &color_scheme, &title, &timestamp);
+		int year, month, day, hour, minute, second;
 		timestamp_parse (timestamp, &year, &month, &day, &hour, &minute, &second);
-		date_str = g_strdup_printf (TIME_STRING_FORMAT, year, month, day, hour, minute, second); // Convert the timestamp to a string
+		date_str = g_strdup_printf (TIME_STRING_FORMAT, year, month, day, hour, minute, second);
+	}
+	else
+	{
+		title = gettext ("Untitled");
+		date_str = g_strdup (gettext ("Corrupted note"));
 	}
 
 	GtkWidget *row = g_object_get_data (G_OBJECT (data), "row");
@@ -214,6 +216,7 @@ handle_note_manager_changed (StickynoteManager *manager, StickynoteManagerMode m
 			break;
 		case STICKYNOTE_MANAGER_MODE_DELETE:
 			StickynoteRow *row = g_object_get_data (G_OBJECT (data), "row");
+			g_object_set_data (G_OBJECT (data), "row", NULL);
 			gtk_list_box_remove_row (self, row);
 			break;
 		default:

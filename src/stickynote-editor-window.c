@@ -266,26 +266,25 @@ stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *m
 	if (metadata_get_path (metadata) == NULL)
 		gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", FALSE);
 
-	const char *title = NULL;
+	const char *title = gettext ("Untitled");
 	int color_scheme = -1;
 
-	metadata_get_data (metadata, &color_scheme, &title, NULL);
-
-	adw_navigation_page_set_title (self->editor_page, (title && *title) ? title : gettext("Untitled"));
-
-	if (color_scheme == -1) // If no color scheme define, use random color
+	if (metadata_check_integrity (metadata))
+		metadata_get_data (metadata, &color_scheme, &title, NULL);
+	else
 	{
 		int random_number = g_random_int_range (0, COLOR_SCHEME_COUNT * 6); // Multiply by 6 to get a better ramdom distribution
 		color_scheme = random_number % COLOR_SCHEME_COUNT;
 	}
 
-	if (metadata_get_content_offset (metadata) > 0)
-		metadata_load_direct (metadata, self->text_buffer);
+	adw_navigation_page_set_title (self->editor_page, title);
 
 	theme_selector_set_color_scheme (self->theme_selector, color_scheme);
 
 	self->last_color_scheme_index = color_scheme;
 	self->has_unsaved_changes = FALSE;
+
+	metadata_load_direct (metadata, self->text_buffer);
 
 	g_object_notify_by_pspec (G_OBJECT (self), stickynote_editor_window_props[PROP_METADATA]); // Notify the change of the metadata property
 }

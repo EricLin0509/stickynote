@@ -557,13 +557,22 @@ metadata_new(const gchar *path)
     };
 
     if (!parse_metadata(&context, path))
-    {
         g_critical("Failed to parse metadata");
-        g_object_unref(metadata);
-        return NULL;
-    }
 
     return metadata;
+}
+
+gboolean
+metadata_check_integrity(Metadata *metadata)
+{
+    g_return_val_if_fail(metadata != NULL, FALSE);
+
+    if (metadata->path == NULL) return FALSE;
+    if (metadata->timestamp == NULL) return FALSE;
+    if (metadata->title == NULL || *metadata->title == '\0') return FALSE;
+    if (metadata->color_scheme < 0) return FALSE;
+
+    return TRUE;
 }
 
 void
