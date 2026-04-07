@@ -52,6 +52,7 @@ struct _StickynoteEditorWindow
 	/* Private */
 	int last_color_scheme_index;
 	gboolean has_unsaved_changes;
+	gboolean should_auto_save;
 	GHashTable *signal_ids;
 	GWeakRef metadata; // Weak reference to the metadata object
 };
@@ -72,6 +73,15 @@ enum {
 };
 
 static GParamSpec *stickynote_editor_window_props[N_PROPS] = { NULL, };
+
+static void
+enable_extra_actions (StickynoteEditorWindow *self, gboolean enabled)
+{
+	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
+
+	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", FALSE);
+	gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.auto-save", FALSE);
+}
 
 static void
 send_simple_toast_message (StickynoteEditorWindow *self, const char *message)
@@ -107,7 +117,7 @@ emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata)
 	{
 		case FILE_OPERATION_SUCCESS:
 			self->has_unsaved_changes = FALSE; // Mark the file as saved
-			gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", TRUE);
+			enable_extra_actions (self, TRUE); // Enable the extra actions
 
 			if (adw_navigation_view_get_visible_page (self->navigation_view) == self->set_title_page)
 				adw_navigation_view_pop (self->navigation_view);
@@ -156,8 +166,14 @@ on_stickynote_window_close (StickynoteEditorWindow *window, gpointer user_data)
 
     g_object_set_data(G_OBJECT(metadata), "stickynote-editor-window", NULL); // Remove the window from the manager
 
-    if (metadata_get_path(metadata) == NULL) // If the note is not saved, clear the metadata
-        g_clear_object (&metadata);
+	if (metadata_get_path (metadata) == NULL)
+	{
+		g_object_unref(metadata);
+		return FALSE;
+	}
+
+	if (window->should_auto_save & window->has_unsaved_changes)
+		emit_file_saved_signal (window, metadata);
 
     return FALSE;
 }
@@ -246,6 +262,20 @@ file_saved_action (GtkWidget  *widget,
 }
 
 static void
+set_auto_save_action (GtkWidget  *widget,
+								const char *action_name,
+                                GVariant      *parameter)
+{
+	StickynoteEditorWindow *self = STICKYNOTE_EDITOR_WINDOW (widget);
+
+	self->should_auto_save ^= TRUE; // Toggle the auto save flag
+
+	g_autofree gchar *message = g_strdup_printf (gettext ("Auto save is %s"), self->should_auto_save ? gettext ("on") : gettext ("off"));
+
+	send_simple_toast_message (self, message);
+}
+
+static void
 emit_export_request_action (GtkWidget  *widget,
 								const char *action_name,
                                 GVariant      *parameter)
@@ -264,7 +294,7 @@ stickynote_editor_window_set_metadata (StickynoteEditorWindow *self, Metadata *m
 	g_weak_ref_set (&self->metadata, metadata);
 
 	if (metadata_get_path (metadata) == NULL)
-		gtk_widget_action_set_enabled (GTK_WIDGET (self), "win.export", FALSE);
+		enable_extra_actions (self, FALSE); // Disable the extra actions if the metadata is not valid
 
 	const char *title = NULL;
 	int color_scheme = -1;
@@ -400,6 +430,7 @@ stickynote_editor_window_class_init (StickynoteEditorWindowClass *klass)
 	gtk_widget_class_bind_template_child (widget_class, StickynoteEditorWindow, save_button);
 
 	gtk_widget_class_install_action (widget_class, "win.save", NULL, file_saved_action);
+	gtk_widget_class_install_action (widget_class, "win.auto-save", NULL, set_auto_save_action);
 	gtk_widget_class_install_action (widget_class, "win.export", NULL, emit_export_request_action);
 }
 

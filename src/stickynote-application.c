@@ -144,6 +144,9 @@ stickynote_application_init (StickynoteApplication *self)
 	                                       "win.save",
 	                                       (const char *[]) { "<control>s", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
+	                                       "win.auto-save",
+	                                       (const char *[]) { "<control><shift>s", NULL });
+	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
 	                                       "win.export",
 	                                       (const char *[]) { "<control>t", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),

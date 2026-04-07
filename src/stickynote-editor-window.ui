@@ -148,6 +148,10 @@
         <attribute name="action">win.save</attribute>
       </item>
       <item>
+        <attribute name="label" translatable="yes">Auto Save</attribute>
+        <attribute name="action">win.auto-save</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">Export</attribute>
         <attribute name="action">win.export</attribute>
       </item>
