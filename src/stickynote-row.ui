@@ -4,6 +4,7 @@
   <requires lib="Adw" version="1.0"/>
   <template class="StickynoteRow" parent="AdwActionRow">
     <property name="activatable-widget">edit_button</property>
+    <property name="title-lines">1</property>
     <property name="use-underline">true</property>
     <child type="suffix">
       <object class="AdwSplitButton" id="edit_button">
