@@ -84,12 +84,14 @@ enable_extra_actions (StickynoteEditorWindow *self, gboolean enabled)
 }
 
 static void
-send_simple_toast_message (StickynoteEditorWindow *self, const char *message)
+send_simple_toast_message (StickynoteEditorWindow *self, const char *message, gint timeout_sec)
 {
 	g_return_if_fail (STICKYNOTE_IS_EDITOR_WINDOW (self));
 
+	if (message == NULL) return;
+
 	AdwToast *toast = adw_toast_new (message);
-	adw_toast_set_timeout (toast, 3); // 3 seconds timeout
+	adw_toast_set_timeout (toast, timeout_sec);
 
 	adw_toast_overlay_add_toast (self->toast_overlay, toast);
 }
@@ -112,6 +114,7 @@ emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata)
 
 	const char *title = NULL;
 	metadata_get_data (metadata, NULL, &title, NULL);
+	g_autofree gchar *final_message = NULL;
 
 	switch (save_result)
 	{
@@ -123,20 +126,21 @@ emit_file_saved_signal (StickynoteEditorWindow *self, Metadata *metadata)
 				adw_navigation_view_pop (self->navigation_view);
 			adw_navigation_page_set_title (self->editor_page, title);
 
-			send_simple_toast_message (self, gettext ("Note saved successfully"));
+			final_message = g_strdup_printf (gettext ("Note \"%s\" saved"), title);
 			break;
 		case FILE_OPERATION_FAILURE:
-			send_simple_toast_message (self, gettext ("Failed to save note"));
+			final_message = g_strdup_printf (gettext ("Failed to save note \"%s\""), title);
 			break;
 		case FILE_OPERATION_FILE_EXISTS:
-			g_autofree gchar *message = g_strdup_printf (gettext ("Note \"%s\" already exists"), title);
-			send_simple_toast_message (self, message);
+			final_message = g_strdup_printf (gettext ("Note \"%s\" already exists"), title);
 			metadata_reset (metadata, METADATA_RESET_TITLE); // Reset the title if the file already exists
 			break;
 		default:
 			g_critical ("Unknown file operation status: %d", save_result);
 			break;
 	}
+
+	send_simple_toast_message (self, final_message, 3);
 }
 
 static void
@@ -272,7 +276,7 @@ set_auto_save_action (GtkWidget  *widget,
 
 	g_autofree gchar *message = g_strdup_printf (gettext ("Auto save is %s"), self->should_auto_save ? gettext ("on") : gettext ("off"));
 
-	send_simple_toast_message (self, message);
+	send_simple_toast_message (self, message, 1);
 }
 
 static void
